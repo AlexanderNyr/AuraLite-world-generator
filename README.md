@@ -103,7 +103,7 @@ Assets/AuraLiteWorldGenerator/
 
 ## License
 
-MIT License -- free to use and modify.
+Apache 2.0
 
 ## Author
 
