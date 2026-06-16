@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -59,7 +58,7 @@ namespace AuraLiteWorldGenerator.Editor
                 }
             }
 
-            MarkStaticRecursive(roadRoot);
+            MeshCombiner.CombineChildrenByMaterial(roadRoot.transform);
         }
 
         public static void CreateBridge(BuildContext ctx, TerrainGrid grid, WorldLayout layout, Transform parent)
@@ -93,7 +92,7 @@ namespace AuraLiteWorldGenerator.Editor
             GameObjectBuilder.CreateCubeChild(bridge.transform, "SupportA", new Vector3(0f, -1.0f, -deckLength * 0.26f), new Vector3(0.6f, 2.0f, 0.6f), ctx.stoneMat);
             GameObjectBuilder.CreateCubeChild(bridge.transform, "SupportB", new Vector3(0f, -1.0f, deckLength * 0.26f), new Vector3(0.6f, 2.0f, 0.6f), ctx.stoneMat);
 
-            MarkStaticRecursive(bridge);
+            MeshCombiner.CombineChildrenByMaterial(bridge.transform);
         }
 
         public static void CreateStreetFences(BuildContext ctx, TerrainGrid grid, WorldLayout layout, Transform parent)
@@ -132,20 +131,8 @@ namespace AuraLiteWorldGenerator.Editor
                     }
                 }
             }
-            MarkStaticRecursive(root);
+            MeshCombiner.CombineChildrenByMaterial(root.transform);
         }
 
-        private static void MarkStaticRecursive(GameObject root)
-        {
-            GameObjectUtility.SetStaticEditorFlags(root,
-                StaticEditorFlags.BatchingStatic |
-                StaticEditorFlags.ContributeGI |
-                StaticEditorFlags.OccluderStatic |
-                StaticEditorFlags.OccludeeStatic |
-                StaticEditorFlags.ReflectionProbeStatic);
-
-            for (int i = 0; i < root.transform.childCount; i++)
-                MarkStaticRecursive(root.transform.GetChild(i).gameObject);
-        }
     }
 }

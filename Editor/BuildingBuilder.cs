@@ -1,5 +1,4 @@
 using AuraLiteWorldGenerator.Runtime;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -10,8 +9,11 @@ namespace AuraLiteWorldGenerator.Editor
     /// </summary>
     public static class BuildingBuilder
     {
-        public static void Build(BuildContext ctx, TerrainGrid grid, HouseSpec spec, Transform parent, int index, VillageStyle style)
+        public static void Build(BuildContext ctx, TerrainGrid grid, HouseSpec spec, Transform parent, int index, VillageStyle style, SeededRandom random)
         {
+            if (random == null)
+                throw new System.ArgumentNullException(nameof(random));
+
             GameObject root = new GameObject(spec.kind + "_" + index.ToString("00"));
             root.transform.SetParent(parent);
             Vector3 pos = spec.position;
@@ -19,23 +21,23 @@ namespace AuraLiteWorldGenerator.Editor
             root.transform.position = pos;
             root.transform.rotation = Quaternion.Euler(0f, spec.yaw, 0f);
 
-            BuildingProfile profile = CreateProfile(ctx, spec, style);
-            CreateMainStructure(ctx, root.transform, profile);
+            BuildingProfile profile = CreateProfile(ctx, spec, style, random);
+            CreateMainStructure(ctx, root.transform, profile, random);
             AddWindows(ctx, root.transform, profile);
             AddTimberFraming(ctx, root.transform, profile);
-            AddChimney(ctx, root.transform, profile);
-            AddKindSpecificDetails(ctx, root.transform, profile);
-            AddYardProps(ctx, root.transform, profile);
+            AddChimney(ctx, root.transform, profile, random);
+            AddKindSpecificDetails(ctx, root.transform, profile, random);
+            AddYardProps(ctx, root.transform, profile, random);
 
             if (spec.fenced)
             {
                 CreateFenceLoop(ctx, root.transform, new Vector3(0f, 0f, -profile.depth * 0.06f), profile.width * 1.9f, profile.depth * 2.1f, 3.0f);
                 if (spec.garden)
-                    CreateGardenShrubs(ctx, root.transform, profile.width, profile.depth);
+                    CreateGardenShrubs(ctx, root.transform, profile.width, profile.depth, random);
             }
 
             SetupBuildingLOD(ctx, root, profile);
-            MarkStaticRecursive(root);
+            GameObjectBuilder.MarkStaticRecursive(root);
         }
 
         private struct BuildingProfile
@@ -51,7 +53,7 @@ namespace AuraLiteWorldGenerator.Editor
             public bool annex;
         }
 
-        private static BuildingProfile CreateProfile(BuildContext ctx, HouseSpec spec, VillageStyle style)
+        private static BuildingProfile CreateProfile(BuildContext ctx, HouseSpec spec, VillageStyle style, SeededRandom random)
         {
             BuildingProfile p = new BuildingProfile
             {
@@ -64,23 +66,23 @@ namespace AuraLiteWorldGenerator.Editor
                 annex = spec.annex
             };
 
-            ApplyStyle(ctx, ref p);
+            ApplyStyle(ctx, ref p, random);
             ApplyKindScaleAndMaterials(ctx, ref p);
             return p;
         }
 
-        private static void ApplyStyle(BuildContext ctx, ref BuildingProfile p)
+        private static void ApplyStyle(BuildContext ctx, ref BuildingProfile p, SeededRandom random)
         {
             if (p.russian)
             {
                 p.wall = ctx.logWallMat;
-                p.roof = Random.value > 0.35f ? ctx.roofDarkMat : ctx.roofRedMat;
+                p.roof = random.Value > 0.35f ? ctx.roofDarkMat : ctx.roofRedMat;
             }
             else
             {
                 bool warmWall = p.kind == BuildingKind.Barn || p.kind == BuildingKind.Workshop || p.kind == BuildingKind.Forge || p.kind == BuildingKind.Mill;
                 p.wall = warmWall ? ctx.wallWarmMat : ctx.wallCreamMat;
-                p.roof = (p.kind == BuildingKind.Barn || Random.value > 0.55f) ? ctx.roofDarkMat : ctx.roofRedMat;
+                p.roof = (p.kind == BuildingKind.Barn || random.Value > 0.55f) ? ctx.roofDarkMat : ctx.roofRedMat;
             }
         }
 
@@ -144,7 +146,7 @@ namespace AuraLiteWorldGenerator.Editor
             }
         }
 
-        private static void CreateMainStructure(BuildContext ctx, Transform root, BuildingProfile p)
+        private static void CreateMainStructure(BuildContext ctx, Transform root, BuildingProfile p, SeededRandom random)
         {
             Material wall = p.wall ?? ctx.wallCreamMat;
             Material roof = p.roof ?? ctx.roofDarkMat;
@@ -156,7 +158,7 @@ namespace AuraLiteWorldGenerator.Editor
 
             if (p.annex && p.kind != BuildingKind.Barn)
             {
-                float side = Random.value > 0.5f ? -1f : 1f;
+                float side = random.Value > 0.5f ? -1f : 1f;
                 float aw = p.width * 0.42f;
                 float ad = p.depth * 0.52f;
                 float ah = p.height * 0.72f;
@@ -244,13 +246,13 @@ namespace AuraLiteWorldGenerator.Editor
                 GameObjectBuilder.CreateCubeChild(root, "BeamCenter", new Vector3(0f, p.height * 0.47f, p.depth * 0.51f), new Vector3(beam, p.height * 0.88f, 0.10f), ctx.timberMat);
         }
 
-        private static void AddChimney(BuildContext ctx, Transform root, BuildingProfile p)
+        private static void AddChimney(BuildContext ctx, Transform root, BuildingProfile p, SeededRandom random)
         {
-            float x = Random.value > 0.5f ? p.width * 0.22f : -p.width * 0.22f;
+            float x = random.Value > 0.5f ? p.width * 0.22f : -p.width * 0.22f;
             GameObjectBuilder.CreateCubeChild(root, "Chimney", new Vector3(x, p.height + p.roofHeight * 0.8f, 0f), new Vector3(0.72f, 2.0f, 0.72f), ctx.stoneMat);
         }
 
-        private static void AddKindSpecificDetails(BuildContext ctx, Transform root, BuildingProfile p)
+        private static void AddKindSpecificDetails(BuildContext ctx, Transform root, BuildingProfile p, SeededRandom random)
         {
             switch (p.kind)
             {
@@ -355,7 +357,7 @@ namespace AuraLiteWorldGenerator.Editor
             GameObjectBuilder.CreateCubeChild(root, "Boat", new Vector3(0f, 0.18f, p.depth * 1.24f), new Vector3(2.8f, 0.36f, 5.2f), ctx.timberMat);
         }
 
-        private static void AddYardProps(BuildContext ctx, Transform root, BuildingProfile p)
+        private static void AddYardProps(BuildContext ctx, Transform root, BuildingProfile p, SeededRandom random)
         {
             if (p.kind == BuildingKind.Barn || p.kind == BuildingKind.Chapel)
                 return;
@@ -365,7 +367,7 @@ namespace AuraLiteWorldGenerator.Editor
                 GameObjectBuilder.CreateCubeChild(root, "WoodPile", new Vector3(-p.width * 0.42f, 0.30f, -p.depth * 0.58f), new Vector3(1.2f, 0.6f, 0.7f), ctx.timberMat);
                 if (p.kind != BuildingKind.Manor)
                     GameObjectBuilder.CreateCubeChild(root, "Shed", new Vector3(p.width * 0.72f, 1.05f, -p.depth * 0.38f), new Vector3(2.1f, 2.1f, 2.0f), ctx.wallWarmMat);
-                if (p.kind == BuildingKind.Manor || Random.value > 0.48f)
+                if (p.kind == BuildingKind.Manor || random.Value > 0.48f)
                 {
                     GameObject tree = new GameObject("YardTree");
                     tree.transform.SetParent(root, false);
@@ -394,7 +396,7 @@ namespace AuraLiteWorldGenerator.Editor
                 GameObjectBuilder.CreateCubeChild(root, "PierPostA", new Vector3(-p.width * 0.28f, -0.22f, p.depth * 1.42f), new Vector3(0.18f, 1.1f, 0.18f), ctx.timberMat);
                 GameObjectBuilder.CreateCubeChild(root, "PierPostB", new Vector3(p.width * 0.28f, -0.22f, p.depth * 1.42f), new Vector3(0.18f, 1.1f, 0.18f), ctx.timberMat);
             }
-            else if (p.kind == BuildingKind.Cottage && Random.value > 0.45f)
+            else if (p.kind == BuildingKind.Cottage && random.Value > 0.45f)
             {
                 GameObjectBuilder.CreateCubeChild(root, "Bench", new Vector3(-p.width * 0.44f, 0.34f, p.depth * 0.76f), new Vector3(1.1f, 0.16f, 0.38f), ctx.timberMat);
             }
@@ -435,16 +437,16 @@ namespace AuraLiteWorldGenerator.Editor
             GameObjectBuilder.CreateCubeChild(parent, "RailB", mid - Vector3.up * 0.22f, rot, new Vector3(0.10f, 0.10f, len), ctx.timberMat);
         }
 
-        private static void CreateGardenShrubs(BuildContext ctx, Transform houseRoot, float w, float d)
+        private static void CreateGardenShrubs(BuildContext ctx, Transform houseRoot, float w, float d, SeededRandom random)
         {
             GameObject shrubs = new GameObject("Garden");
             shrubs.transform.SetParent(houseRoot, false);
-            int count = Random.Range(4, 8);
+            int count = random.Range(4, 8);
             for (int i = 0; i < count; i++)
             {
-                float x = Random.Range(-w * 0.7f, w * 0.7f);
-                float z = Random.Range(-d * 0.9f, -d * 0.18f);
-                VegetationBuilder.CreateShrubCluster(ctx, shrubs.transform, new Vector3(x, 0f, z), Random.Range(0.8f, 1.3f));
+                float x = random.Range(-w * 0.7f, w * 0.7f);
+                float z = random.Range(-d * 0.9f, -d * 0.18f);
+                VegetationBuilder.CreateShrubCluster(ctx, shrubs.transform, new Vector3(x, 0f, z), random.Range(0.8f, 1.3f));
             }
         }
 
@@ -476,17 +478,5 @@ namespace AuraLiteWorldGenerator.Editor
             LODHelpers.ApplyLODGroup(root, lod0, lod1, lod2, 0.78f, 0.34f, 0.09f);
         }
 
-        private static void MarkStaticRecursive(GameObject root)
-        {
-            GameObjectUtility.SetStaticEditorFlags(root,
-                StaticEditorFlags.BatchingStatic |
-                StaticEditorFlags.ContributeGI |
-                StaticEditorFlags.OccluderStatic |
-                StaticEditorFlags.OccludeeStatic |
-                StaticEditorFlags.ReflectionProbeStatic);
-
-            for (int i = 0; i < root.transform.childCount; i++)
-                MarkStaticRecursive(root.transform.GetChild(i).gameObject);
-        }
     }
 }

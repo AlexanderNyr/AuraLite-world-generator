@@ -33,6 +33,9 @@ namespace AuraLiteWorldGenerator.Runtime
                     return;
             }
 
+            if (_targetCamera.transform == null)
+                return;
+
             Vector3 direction = _targetCamera.transform.position - transform.position;
             if (yOnly)
                 direction.y = 0f;

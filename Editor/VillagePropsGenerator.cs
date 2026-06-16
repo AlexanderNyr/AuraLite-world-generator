@@ -1,4 +1,3 @@
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -17,21 +16,21 @@ namespace AuraLiteWorldGenerator.Editor
             int treeCount = Mathf.RoundToInt(28f * settings.qualityBoost);
             for (int i = 0; i < treeCount; i++)
             {
-                Vector3 pos = layout.villageCenter + new Vector3(Random.Range(-layout.villageLengthMeters * 0.50f, layout.villageLengthMeters * 0.50f), 0f, Random.Range(-layout.villageHalfWidthMeters * 1.10f, layout.villageHalfWidthMeters * 1.10f));
+                Vector3 pos = layout.villageCenter + new Vector3(layout.random.Range(-layout.villageLengthMeters * 0.50f, layout.villageLengthMeters * 0.50f), 0f, layout.random.Range(-layout.villageHalfWidthMeters * 1.10f, layout.villageHalfWidthMeters * 1.10f));
                 if (WorldLayoutGenerator.ComputeHouseMask(layout, pos.x, pos.z) > 0.08f || WorldLayoutGenerator.ComputeRoadMask(layout, pos.x, pos.z) > 0.10f || WorldLayoutGenerator.ComputeRiverMask(layout, pos.x, pos.z) > 0.06f || WorldLayoutGenerator.ComputeLakeMask(layout, pos.x, pos.z) > 0.04f)
                     continue;
                 pos.y = GeometryHelpers.SampleTerrainHeight(grid, pos);
                 GameObject tree = new GameObject("VillageTree_" + i);
                 tree.transform.SetParent(root.transform);
                 tree.transform.position = pos;
-                tree.transform.localScale = Vector3.one * Random.Range(0.58f, 0.92f);
+                tree.transform.localScale = Vector3.one * layout.random.Range(0.58f, 0.92f);
                 VegetationBuilder.BuildBroadleafTree(ctx, tree.transform);
             }
 
             int orchardCount = Mathf.RoundToInt(12f * settings.qualityBoost);
             for (int i = 0; i < orchardCount; i++)
             {
-                Vector3 pos = layout.villageCenter + new Vector3(Random.Range(-layout.villageLengthMeters * 0.42f, layout.villageLengthMeters * 0.42f), 0f, Random.Range(-layout.villageHalfWidthMeters * 0.92f, layout.villageHalfWidthMeters * 0.92f));
+                Vector3 pos = layout.villageCenter + new Vector3(layout.random.Range(-layout.villageLengthMeters * 0.42f, layout.villageLengthMeters * 0.42f), 0f, layout.random.Range(-layout.villageHalfWidthMeters * 0.92f, layout.villageHalfWidthMeters * 0.92f));
                 if (WorldLayoutGenerator.ComputeHouseMask(layout, pos.x, pos.z) > 0.08f || WorldLayoutGenerator.ComputeRoadMask(layout, pos.x, pos.z) > 0.10f || WorldLayoutGenerator.ComputeRiverMask(layout, pos.x, pos.z) > 0.06f)
                     continue;
                 pos.y = GeometryHelpers.SampleTerrainHeight(grid, pos);
@@ -42,13 +41,13 @@ namespace AuraLiteWorldGenerator.Editor
                 {
                     GameObject tree = new GameObject("Tree_" + t);
                     tree.transform.SetParent(orchard.transform, false);
-                    tree.transform.localPosition = new Vector3(Random.Range(-6f, 6f), 0f, Random.Range(-6f, 6f));
-                    tree.transform.localScale = Vector3.one * Random.Range(0.48f, 0.68f);
+                    tree.transform.localPosition = new Vector3(layout.random.Range(-6f, 6f), 0f, layout.random.Range(-6f, 6f));
+                    tree.transform.localScale = Vector3.one * layout.random.Range(0.48f, 0.68f);
                     VegetationBuilder.BuildBroadleafTree(ctx, tree.transform);
                 }
             }
 
-            MarkStaticRecursive(root);
+            GameObjectBuilder.MarkStaticRecursive(root);
         }
 
         public static void CreateRoadsideProps(BuildContext ctx, TerrainGrid grid, WorldLayout layout, GenerationSettings settings, Transform parent)
@@ -91,7 +90,7 @@ namespace AuraLiteWorldGenerator.Editor
                         GameObject tree = new GameObject($"RoadTree_{r}_{Mathf.RoundToInt(d)}");
                         tree.transform.SetParent(treesRoot.transform);
                         tree.transform.position = treePos;
-                        tree.transform.localScale = Vector3.one * Random.Range(0.68f, 0.92f);
+                        tree.transform.localScale = Vector3.one * layout.random.Range(0.68f, 0.92f);
                         VegetationBuilder.BuildBroadleafTree(ctx, tree.transform);
                     }
 
@@ -107,8 +106,8 @@ namespace AuraLiteWorldGenerator.Editor
                 }
             }
 
-            MarkStaticRecursive(polesRoot);
-            MarkStaticRecursive(treesRoot);
+            MeshCombiner.CombineChildrenByMaterial(polesRoot.transform);
+            GameObjectBuilder.MarkStaticRecursive(treesRoot);
         }
 
         public static void CreateVillageStreetProps(BuildContext ctx, TerrainGrid grid, WorldLayout layout, GenerationSettings settings, Transform parent)
@@ -154,7 +153,7 @@ namespace AuraLiteWorldGenerator.Editor
                 GameObjectBuilder.CreateCylinderChild(root.transform, "LampPost_" + i, p + new Vector3(0f, 1.8f, 0f), new Vector3(0.11f, 1.8f, 0.11f), ctx.timberMat);
                 GameObjectBuilder.CreateSphereChild(root.transform, "LampGlow_" + i, p + new Vector3(0f, 3.4f, 0f), Vector3.one * 0.28f, ctx.glassMat);
             }
-            MarkStaticRecursive(root);
+            MeshCombiner.CombineChildrenByMaterial(root.transform);
         }
 
         public static void CreateLakeShoreProps(BuildContext ctx, TerrainGrid grid, WorldLayout layout, GenerationSettings settings, Transform parent)
@@ -184,22 +183,10 @@ namespace AuraLiteWorldGenerator.Editor
                 float a = i / (float)rockCount * Mathf.PI * 2f;
                 Vector3 p = layout.lakeCenter + new Vector3(Mathf.Cos(a) * layout.lakeRadiusX * 1.04f, 0f, Mathf.Sin(a) * layout.lakeRadiusZ * 1.02f);
                 p.y = GeometryHelpers.SampleTerrainHeight(grid, p) + 0.2f;
-                GameObjectBuilder.CreateSphereChild(root.transform, "Rock_" + i, p, Vector3.one * Random.Range(0.8f, 1.8f), ctx.stoneMat);
+                GameObjectBuilder.CreateSphereChild(root.transform, "Rock_" + i, p, Vector3.one * layout.random.Range(0.8f, 1.8f), ctx.stoneMat);
             }
-            MarkStaticRecursive(root);
+            MeshCombiner.CombineChildrenByMaterial(root.transform);
         }
 
-        private static void MarkStaticRecursive(GameObject root)
-        {
-            GameObjectUtility.SetStaticEditorFlags(root,
-                StaticEditorFlags.BatchingStatic |
-                StaticEditorFlags.ContributeGI |
-                StaticEditorFlags.OccluderStatic |
-                StaticEditorFlags.OccludeeStatic |
-                StaticEditorFlags.ReflectionProbeStatic);
-
-            for (int i = 0; i < root.transform.childCount; i++)
-                MarkStaticRecursive(root.transform.GetChild(i).gameObject);
-        }
     }
 }

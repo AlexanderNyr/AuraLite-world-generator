@@ -1,4 +1,3 @@
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -52,7 +51,7 @@ namespace AuraLiteWorldGenerator.Editor
                     GameObjectBuilder.CreateCubeChild(riverRoot.transform, "RiverSegment", mid, Quaternion.LookRotation((p1 - p0).normalized, Vector3.up), new Vector3(width, 0.05f, segLen + 0.25f), ctx.waterMat);
                 }
             }
-            MarkStaticRecursive(riverRoot);
+            MeshCombiner.CombineChildrenByMaterial(riverRoot.transform);
         }
 
         public static void CreateWaterVegetation(BuildContext ctx, TerrainGrid grid, WorldLayout layout, GenerationSettings settings, Transform parent)
@@ -92,20 +91,8 @@ namespace AuraLiteWorldGenerator.Editor
                 }
             }
 
-            MarkStaticRecursive(root);
+            GameObjectBuilder.MarkStaticRecursive(root);
         }
 
-        private static void MarkStaticRecursive(GameObject root)
-        {
-            GameObjectUtility.SetStaticEditorFlags(root,
-                StaticEditorFlags.BatchingStatic |
-                StaticEditorFlags.ContributeGI |
-                StaticEditorFlags.OccluderStatic |
-                StaticEditorFlags.OccludeeStatic |
-                StaticEditorFlags.ReflectionProbeStatic);
-
-            for (int i = 0; i < root.transform.childCount; i++)
-                MarkStaticRecursive(root.transform.GetChild(i).gameObject);
-        }
     }
 }

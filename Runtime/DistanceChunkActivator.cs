@@ -82,7 +82,7 @@ namespace AuraLiteWorldGenerator.Runtime
         private float EstimateDistanceToChunk(ChunkRule rule, Vector3 cameraPosition)
         {
             if (_boundsCache.TryGetValue(rule, out Bounds bounds))
-                return bounds.SqrDistance(cameraPosition) > 0f ? Mathf.Sqrt(bounds.SqrDistance(cameraPosition)) : 0f;
+                return Mathf.Sqrt(bounds.SqrDistance(cameraPosition));
 
             if (rule.nearRoot != null)
                 return Vector3.Distance(cameraPosition, rule.nearRoot.transform.position);

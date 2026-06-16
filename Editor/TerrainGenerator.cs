@@ -1,4 +1,8 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -11,7 +15,7 @@ namespace AuraLiteWorldGenerator.Editor
     /// </summary>
     public static class TerrainGenerator
     {
-        public static TerrainGrid CreateTerrainGrid(BuildContext ctx, WorldLayout layout, GenerationSettings settings, Transform parent)
+        public static IEnumerator CreateTerrainGrid(BuildContext ctx, WorldLayout layout, GenerationSettings settings, Transform parent, Action<TerrainGrid> onComplete, CancellationToken cancellationToken = default)
         {
             TerrainGrid grid = new TerrainGrid
             {
@@ -20,14 +24,46 @@ namespace AuraLiteWorldGenerator.Editor
                 terrains = new Terrain[layout.tileCount, layout.tileCount]
             };
 
+            HouseSpatialCache houseCache = layout.houseCache ?? new HouseSpatialCache(layout);
             int heightRes = layout.tileCount <= 10 ? 1025 : (layout.tileCount <= 18 ? 513 : 257);
             int alphaRes = layout.tileCount <= 12 ? 512 : (layout.tileCount <= 18 ? 256 : 128);
             int detailRes = layout.tileCount <= 12 ? Mathf.RoundToInt(192 * settings.qualityBoost) : Mathf.RoundToInt(96 * settings.qualityBoost);
+            int tileCount = layout.tileCount;
 
-            for (int z = 0; z < layout.tileCount; z++)
+            // Compute all heightmaps in parallel on thread-pool workers. Mathf.PerlinNoise and the
+            // layout mask helpers are pure math / read-only, so this is safe and much faster.
+            float[][,] heights = new float[tileCount * tileCount][,];
+            Task heightTask = Task.Run(() =>
             {
-                for (int x = 0; x < layout.tileCount; x++)
+                Parallel.For(0, tileCount, new ParallelOptions { CancellationToken = cancellationToken }, z =>
                 {
+                    for (int x = 0; x < tileCount; x++)
+                    {
+                        int index = z * tileCount + x;
+                        heights[index] = GenerateHeightsForTile(layout, x, z, heightRes, houseCache);
+                    }
+                });
+            }, cancellationToken);
+
+            while (!heightTask.IsCompleted)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return null;
+            }
+
+            if (heightTask.IsCanceled)
+                throw new OperationCanceledException("Height computation was cancelled.");
+            if (heightTask.IsFaulted)
+                throw heightTask.Exception?.InnerException ?? heightTask.Exception ?? new Exception("Height computation task failed.");
+
+            // TerrainData creation must stay on the main thread.
+            for (int z = 0; z < tileCount; z++)
+            {
+                for (int x = 0; x < tileCount; x++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    int index = z * tileCount + x;
                     TerrainData td = new TerrainData();
                     td.heightmapResolution = heightRes;
                     td.alphamapResolution = alphaRes;
@@ -36,9 +72,7 @@ namespace AuraLiteWorldGenerator.Editor
                     td.size = new Vector3(layout.tileSizeMeters, layout.terrainHeightMeters, layout.tileSizeMeters);
                     td.terrainLayers = new[] { ctx.grassLayer, ctx.wheatLayer, ctx.dirtLayer, ctx.forestLayer };
                     td.detailPrototypes = new[] { CreateGrassDetailPrototype(ctx), CreateWheatDetailPrototype(ctx) };
-
-                    float[,] heights = GenerateHeightsForTile(layout, x, z, heightRes);
-                    td.SetHeights(0, 0, heights);
+                    td.SetHeights(0, 0, heights[index]);
 
                     string tdPath = ctx.terrainFolder + $"/TerrainData_{x}_{z}.asset";
                     AssetFactory.DeleteExistingAsset<TerrainData>(tdPath);
@@ -59,11 +93,12 @@ namespace AuraLiteWorldGenerator.Editor
                     terrain.detailObjectDensity = Mathf.Lerp(1f, 1.7f, Mathf.InverseLerp(1f, 3f, settings.qualityBoost));
                     terrain.treeDistance = 0f;
                     grid.terrains[x, z] = terrain;
+                    yield return null;
                 }
             }
 
             SetTerrainNeighbors(grid, layout);
-            return grid;
+            onComplete?.Invoke(grid);
         }
 
         private static void SetTerrainNeighbors(TerrainGrid grid, WorldLayout layout)
@@ -81,7 +116,7 @@ namespace AuraLiteWorldGenerator.Editor
             }
         }
 
-        private static float[,] GenerateHeightsForTile(WorldLayout layout, int tileX, int tileZ, int resolution)
+        private static float[,] GenerateHeightsForTile(WorldLayout layout, int tileX, int tileZ, int resolution, HouseSpatialCache houseCache)
         {
             float[,] heights = new float[resolution, resolution];
             float worldX0 = tileX * layout.tileSizeMeters;
@@ -94,13 +129,13 @@ namespace AuraLiteWorldGenerator.Editor
                 for (int x = 0; x < resolution; x++)
                 {
                     float worldX = worldX0 + x * invRes * layout.tileSizeMeters;
-                    heights[z, x] = Mathf.Clamp01(EvaluateTerrainHeightMeters(layout, worldX, worldZ) / layout.terrainHeightMeters);
+                    heights[z, x] = Mathf.Clamp01(EvaluateTerrainHeightMeters(layout, worldX, worldZ, houseCache) / layout.terrainHeightMeters);
                 }
             }
             return heights;
         }
 
-        public static float EvaluateTerrainHeightMeters(WorldLayout layout, float worldX, float worldZ)
+        public static float EvaluateTerrainHeightMeters(WorldLayout layout, float worldX, float worldZ, HouseSpatialCache houseCache = null)
         {
             float broad = 16f + (GeometryHelpers.FBM(worldX * 0.00045f + layout.seed * 0.011f, worldZ * 0.00045f + 9.1f, 4, 0.5f, 2f) - 0.5f) * 20f;
             float detail = (GeometryHelpers.FBM(worldX * 0.00165f + 54f, worldZ * 0.00165f + 18f, 3, 0.5f, 2.1f) - 0.5f) * 5f;
@@ -137,16 +172,46 @@ namespace AuraLiteWorldGenerator.Editor
                 h = Mathf.Lerp(h, roadBase, roadMask * 0.9f);
             }
 
-            for (int i = 0; i < layout.houses.Count; i++)
+            if (houseCache != null)
             {
-                HouseSpec house = layout.houses[i];
-                float radius = Mathf.Max(house.footprint.x, house.footprint.y) * 0.95f;
-                float d = Vector2.Distance(new Vector2(worldX, worldZ), new Vector2(house.position.x, house.position.z));
-                if (d < radius)
+                List<HouseSpec> nearby = houseCache.GetNearby(worldX, worldZ);
+                if (nearby != null)
                 {
-                    float t = 1f - Mathf.Clamp01(d / radius);
-                    float padBase = 15f + (Mathf.PerlinNoise(house.position.x * 0.0003f, house.position.z * 0.0003f) - 0.5f) * 1.2f;
-                    h = Mathf.Lerp(h, padBase, t * 0.95f);
+                    for (int i = 0; i < nearby.Count; i++)
+                    {
+                        HouseSpec house = nearby[i];
+                        float radius = Mathf.Max(house.footprint.x, house.footprint.y) * 0.95f;
+                        float dx = worldX - house.position.x;
+                        float dz = worldZ - house.position.z;
+                        float sqrDist = dx * dx + dz * dz;
+                        float sqrRadius = radius * radius;
+                        if (sqrDist < sqrRadius)
+                        {
+                            float d = Mathf.Sqrt(sqrDist);
+                            float t = 1f - Mathf.Clamp01(d / radius);
+                            float padBase = 15f + (Mathf.PerlinNoise(house.position.x * 0.0003f, house.position.z * 0.0003f) - 0.5f) * 1.2f;
+                            h = Mathf.Lerp(h, padBase, t * 0.95f);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < layout.houses.Count; i++)
+                {
+                    HouseSpec house = layout.houses[i];
+                    float radius = Mathf.Max(house.footprint.x, house.footprint.y) * 0.95f;
+                    float dx = worldX - house.position.x;
+                    float dz = worldZ - house.position.z;
+                    float sqrDist = dx * dx + dz * dz;
+                    float sqrRadius = radius * radius;
+                    if (sqrDist < sqrRadius)
+                    {
+                        float d = Mathf.Sqrt(sqrDist);
+                        float t = 1f - Mathf.Clamp01(d / radius);
+                        float padBase = 15f + (Mathf.PerlinNoise(house.position.x * 0.0003f, house.position.z * 0.0003f) - 0.5f) * 1.2f;
+                        h = Mathf.Lerp(h, padBase, t * 0.95f);
+                    }
                 }
             }
 
@@ -184,12 +249,13 @@ namespace AuraLiteWorldGenerator.Editor
             return mask;
         }
 
-        public static void PaintTerrainGrid(BuildContext ctx, TerrainGrid grid, WorldLayout layout)
+        public static IEnumerator PaintTerrainGrid(BuildContext ctx, TerrainGrid grid, WorldLayout layout, Action onComplete = null, CancellationToken cancellationToken = default)
         {
             for (int tz = 0; tz < grid.tileCount; tz++)
             {
                 for (int tx = 0; tx < grid.tileCount; tx++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     Terrain terrain = grid.terrains[tx, tz];
                     if (terrain == null) continue;
                     TerrainData td = terrain.terrainData;
@@ -224,8 +290,10 @@ namespace AuraLiteWorldGenerator.Editor
                     }
 
                     td.SetAlphamaps(0, 0, map);
+                    yield return null;
                 }
             }
+            onComplete?.Invoke();
         }
 
         public static void ComputeSplatWeights(WorldLayout layout, float wx, float wz, out float grass, out float wheat, out float dirt, out float forest)
@@ -256,12 +324,13 @@ namespace AuraLiteWorldGenerator.Editor
             wheat = wheatLayer;
         }
 
-        public static void PopulateTerrainDetails(BuildContext ctx, TerrainGrid grid, WorldLayout layout, GenerationSettings settings)
+        public static IEnumerator PopulateTerrainDetails(BuildContext ctx, TerrainGrid grid, WorldLayout layout, GenerationSettings settings, Action onComplete = null, CancellationToken cancellationToken = default)
         {
             for (int tz = 0; tz < grid.tileCount; tz++)
             {
                 for (int tx = 0; tx < grid.tileCount; tx++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     Terrain terrain = grid.terrains[tx, tz];
                     if (terrain == null) continue;
                     TerrainData td = terrain.terrainData;
@@ -291,11 +360,13 @@ namespace AuraLiteWorldGenerator.Editor
                             float fieldBorder;
                             float wheatMask = WorldLayoutGenerator.ComputeWheatFieldMask(layout, wx, wz, out fieldBorder);
                             float localNoise = GeometryHelpers.Hash01(Mathf.FloorToInt(wx * 0.5f), Mathf.FloorToInt(wz * 0.5f), layout.seed + 801);
-                            float nearVillage = Vector2.Distance(new Vector2(wx, wz), new Vector2(layout.villageCenter.x, layout.villageCenter.z));
+                            float dxVillage = wx - layout.villageCenter.x;
+                            float dzVillage = wz - layout.villageCenter.z;
+                            bool nearVillage = dxVillage * dxVillage + dzVillage * dzVillage < 950f * 950f;
 
                             if (wheatMask > 0.52f)
                             {
-                                float densityMul = nearVillage < 950f ? 0.35f : 1f;
+                                float densityMul = nearVillage ? 0.35f : 1f;
                                 wheat[z, x] = Mathf.RoundToInt(Mathf.Lerp(3f, 10f + settings.qualityBoost * 2f, wheatMask) * densityMul * (0.7f + localNoise * 0.6f));
                             }
                             else
@@ -308,8 +379,10 @@ namespace AuraLiteWorldGenerator.Editor
 
                     td.SetDetailLayer(0, 0, 0, grass);
                     td.SetDetailLayer(0, 0, 1, wheat);
+                    yield return null;
                 }
             }
+            onComplete?.Invoke();
         }
 
         private static DetailPrototype CreateGrassDetailPrototype(BuildContext ctx)
@@ -347,5 +420,6 @@ namespace AuraLiteWorldGenerator.Editor
                 useInstancing = true
             };
         }
+
     }
 }

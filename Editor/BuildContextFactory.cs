@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.Rendering.Universal;
 using static AuraLiteWorldGenerator.Runtime.WorldGeneratorConstants;
 
 namespace AuraLiteWorldGenerator.Editor
@@ -11,6 +10,9 @@ namespace AuraLiteWorldGenerator.Editor
     {
         public static BuildContext Prepare(GenerationSettings settings)
         {
+            if (settings == null)
+                throw new System.ArgumentNullException(nameof(settings));
+
             BuildContext ctx = new BuildContext
             {
                 rootFolder = settings.outputRoot,

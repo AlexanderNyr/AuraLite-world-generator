@@ -83,5 +83,29 @@ namespace AuraLiteWorldGenerator.Editor
         public float TargetSideMeters => Mathf.Sqrt(mapAreaKm2) * 1000f;
 
         public float TileSizeMeters => TargetSideMeters > LargeWorldThreshold ? TerrainTileSizeLarge : TerrainTileSizeSmall;
+
+        /// <summary>Creates a deep-enough copy for storing as a preset.</summary>
+        public GenerationSettings Clone()
+        {
+            return new GenerationSettings
+            {
+                sceneName = sceneName,
+                seed = seed,
+                createNewScene = createNewScene,
+                saveSceneAsset = saveSceneAsset,
+                mapAreaKm2 = mapAreaKm2,
+                terrainHeightMeters = terrainHeightMeters,
+                villageLengthMeters = villageLengthMeters,
+                mainStreetWidthMeters = mainStreetWidthMeters,
+                laneWidthMeters = laneWidthMeters,
+                houseDensity = houseDensity,
+                wheatRatio = wheatRatio,
+                qualityBoost = qualityBoost,
+                villageStyle = villageStyle,
+                fogStartKm = fogStartKm,
+                fogEndKm = fogEndKm,
+                outputRoot = outputRoot
+            };
+        }
     }
 }

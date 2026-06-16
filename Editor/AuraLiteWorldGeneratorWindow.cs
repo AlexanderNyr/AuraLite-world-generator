@@ -1,5 +1,8 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections;
+using System.Diagnostics;
+using System.Threading;
 using AuraLiteWorldGenerator.Runtime;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -16,8 +19,10 @@ namespace AuraLiteWorldGenerator.Editor
     public class AuraLiteWorldGeneratorWindow : EditorWindow
     {
         private GenerationSettings _settings = new GenerationSettings();
+        private GenerationSettingsAsset _settingsAsset;
         private bool _showAdvanced;
         private Vector2 _scroll;
+        private CancellationTokenSource _buildCancellation;
 
         [MenuItem(MenuPath + "Build AAA Rural World (URP)")]
         public static void OpenWindow()
@@ -48,6 +53,22 @@ namespace AuraLiteWorldGenerator.Editor
         private void DrawBasicSettings()
         {
             EditorGUILayout.LabelField("Basic Settings", EditorStyles.boldLabel);
+            _settingsAsset = (GenerationSettingsAsset)EditorGUILayout.ObjectField("Settings Preset", _settingsAsset, typeof(GenerationSettingsAsset), false);
+
+            EditorGUILayout.BeginHorizontal();
+            GUI.enabled = _settingsAsset != null;
+            if (GUILayout.Button("Load from Asset", GUILayout.Height(22)) && _settingsAsset != null)
+                _settings = _settingsAsset.settings.Clone();
+            if (GUILayout.Button("Save to Asset", GUILayout.Height(22)) && _settingsAsset != null)
+            {
+                _settingsAsset.settings = _settings.Clone();
+                EditorUtility.SetDirty(_settingsAsset);
+                AssetDatabase.SaveAssets();
+            }
+            GUI.enabled = true;
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.Space(4);
             _settings.sceneName = EditorGUILayout.TextField("Scene Name", _settings.sceneName);
             _settings.seed = EditorGUILayout.IntField("Seed", _settings.seed);
             _settings.createNewScene = EditorGUILayout.Toggle("Create New Scene", _settings.createNewScene);
@@ -113,89 +134,160 @@ namespace AuraLiteWorldGenerator.Editor
 
         private void BuildScene()
         {
+            if (EditorCoroutineRunner.IsRunning)
+            {
+                EditorUtility.DisplayDialog("Generation Running", "A world is already being generated. Please wait or cancel it.", "OK");
+                return;
+            }
+
             _settings.ValidateAndClamp();
-            UnityEngine.Random.InitState(_settings.seed);
+            _buildCancellation?.Dispose();
+            _buildCancellation = new CancellationTokenSource();
+            EditorCoroutineRunner.Start(BuildSceneCoroutine(_buildCancellation.Token));
+        }
+
+        private bool CheckCancellation(string info, float progress, CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return true;
+            if (EditorUtility.DisplayCancelableProgressBar(WindowTitle, info, progress))
+            {
+                _buildCancellation?.Cancel();
+                return true;
+            }
+            return false;
+        }
+
+        private IEnumerator BuildSceneCoroutine(CancellationToken cancellationToken)
+        {
+            Stopwatch timer = Stopwatch.StartNew();
+            BuildContext ctx = null;
+            WorldLayout layout = null;
+            Scene scene = new Scene();
+            GameObject root = null;
+            GameObject envRoot = null;
+            GameObject roadsRoot = null;
+            GameObject villageRoot = null;
+            GameObject fieldsRoot = null;
+            GameObject forestRoot = null;
+            TerrainGrid grid = null;
 
             try
             {
-                EditorUtility.DisplayProgressBar(WindowTitle, "Preparing assets...", 0.03f);
-                BuildContext ctx = BuildContextFactory.Prepare(_settings);
+                if (CheckCancellation("Preparing assets...", 0.03f, cancellationToken))
+                    throw new System.OperationCanceledException("Generation cancelled by user.");
+                ctx = BuildContextFactory.Prepare(_settings);
+                yield return null;
 
-                EditorUtility.DisplayProgressBar(WindowTitle, "Generating world layout...", 0.08f);
-                WorldLayout layout = WorldLayoutGenerator.Generate(_settings);
+                if (CheckCancellation("Generating world layout...", 0.08f, cancellationToken))
+                    throw new System.OperationCanceledException("Generation cancelled by user.");
+                layout = WorldLayoutGenerator.Generate(_settings);
+                yield return null;
 
-                EditorUtility.DisplayProgressBar(WindowTitle, "Preparing scene...", 0.12f);
-                Scene scene = PrepareScene();
+                if (CheckCancellation("Preparing scene...", 0.12f, cancellationToken))
+                    throw new System.OperationCanceledException("Generation cancelled by user.");
+                scene = PrepareScene();
                 LightingAndEnvironment.ConfigureEnvironment(_settings);
 
-                GameObject root = new GameObject("GeneratedRuralWorld_Root");
-                GameObject envRoot = new GameObject("Environment");
+                root = new GameObject("GeneratedRuralWorld_Root");
+                envRoot = new GameObject("Environment");
                 envRoot.transform.SetParent(root.transform);
-                GameObject roadsRoot = new GameObject("Roads");
+                roadsRoot = new GameObject("Roads");
                 roadsRoot.transform.SetParent(root.transform);
-                GameObject villageRoot = new GameObject("Village");
+                villageRoot = new GameObject("Village");
                 villageRoot.transform.SetParent(root.transform);
-                GameObject fieldsRoot = new GameObject("Fields");
+                fieldsRoot = new GameObject("Fields");
                 fieldsRoot.transform.SetParent(root.transform);
-                GameObject forestRoot = new GameObject("ForestFar");
+                forestRoot = new GameObject("ForestFar");
                 forestRoot.transform.SetParent(root.transform);
+                yield return null;
 
-                EditorUtility.DisplayProgressBar(WindowTitle, "Generating tiled terrain...", 0.28f);
-                TerrainGrid grid = TerrainGenerator.CreateTerrainGrid(ctx, layout, _settings, envRoot.transform);
+                if (CheckCancellation("Generating tiled terrain...", 0.28f, cancellationToken))
+                    throw new System.OperationCanceledException("Generation cancelled by user.");
+                yield return TerrainGenerator.CreateTerrainGrid(ctx, layout, _settings, envRoot.transform, result => grid = result, cancellationToken);
 
-                EditorUtility.DisplayProgressBar(WindowTitle, "Painting terrain layers...", 0.42f);
-                TerrainGenerator.PaintTerrainGrid(ctx, grid, layout);
+                if (CheckCancellation("Painting terrain layers...", 0.42f, cancellationToken))
+                    throw new System.OperationCanceledException("Generation cancelled by user.");
+                yield return TerrainGenerator.PaintTerrainGrid(ctx, grid, layout, null, cancellationToken);
 
-                EditorUtility.DisplayProgressBar(WindowTitle, "Creating grass and wheat details...", 0.52f);
-                TerrainGenerator.PopulateTerrainDetails(ctx, grid, layout, _settings);
+                if (CheckCancellation("Creating grass and wheat details...", 0.52f, cancellationToken))
+                    throw new System.OperationCanceledException("Generation cancelled by user.");
+                yield return TerrainGenerator.PopulateTerrainDetails(ctx, grid, layout, _settings, null, cancellationToken);
 
-                EditorUtility.DisplayProgressBar(WindowTitle, "Creating lake and river...", 0.56f);
+                if (CheckCancellation("Creating lake and river...", 0.56f, cancellationToken))
+                    throw new System.OperationCanceledException("Generation cancelled by user.");
                 WaterGenerator.CreateWaterSystem(ctx, grid, layout, _settings, envRoot.transform);
+                yield return null;
 
-                EditorUtility.DisplayProgressBar(WindowTitle, "Building roads and village streets...", 0.62f);
+                if (CheckCancellation("Building roads and village streets...", 0.62f, cancellationToken))
+                    throw new System.OperationCanceledException("Generation cancelled by user.");
                 RoadGenerator.CreateRoadMeshes(ctx, grid, layout, _settings, roadsRoot.transform);
                 RoadGenerator.CreateBridge(ctx, grid, layout, roadsRoot.transform);
                 RoadGenerator.CreateStreetFences(ctx, grid, layout, roadsRoot.transform);
+                yield return null;
 
-                EditorUtility.DisplayProgressBar(WindowTitle, "Adding roadside details...", 0.71f);
+                if (CheckCancellation("Adding roadside details...", 0.71f, cancellationToken))
+                    throw new System.OperationCanceledException("Generation cancelled by user.");
                 VillagePropsGenerator.CreateRoadsideProps(ctx, grid, layout, _settings, roadsRoot.transform);
+                yield return null;
 
-                EditorUtility.DisplayProgressBar(WindowTitle, "Building village houses...", 0.80f);
-                CreateVillageBuildings(ctx, grid, layout, villageRoot.transform);
+                if (CheckCancellation("Building village houses...", 0.80f, cancellationToken))
+                    throw new System.OperationCanceledException("Generation cancelled by user.");
+                yield return CreateVillageBuildings(ctx, grid, layout, villageRoot.transform, cancellationToken);
                 VillagePropsGenerator.CreateVillageStreetProps(ctx, grid, layout, _settings, villageRoot.transform);
                 VillagePropsGenerator.CreateVillageGreenery(ctx, grid, layout, _settings, villageRoot.transform);
                 VillagePropsGenerator.CreateLakeShoreProps(ctx, grid, layout, _settings, villageRoot.transform);
+                yield return null;
 
-                EditorUtility.DisplayProgressBar(WindowTitle, "Adding field boundaries and props...", 0.89f);
+                if (CheckCancellation("Adding field boundaries and props...", 0.89f, cancellationToken))
+                    throw new System.OperationCanceledException("Generation cancelled by user.");
                 FieldPropsGenerator.CreateFieldBoundaryProps(ctx, grid, layout, _settings, fieldsRoot.transform);
                 FieldPropsGenerator.CreateFieldStonePiles(ctx, grid, layout, _settings, fieldsRoot.transform);
                 WaterGenerator.CreateWaterVegetation(ctx, grid, layout, _settings, fieldsRoot.transform);
                 FieldPropsGenerator.CreateFieldProps(ctx, grid, layout, _settings, fieldsRoot.transform);
+                yield return null;
 
-                EditorUtility.DisplayProgressBar(WindowTitle, "Creating far forest...", 0.94f);
-                ForestGenerator.CreateFarForest(ctx, grid, layout, _settings, forestRoot.transform);
+                if (CheckCancellation("Creating far forest...", 0.94f, cancellationToken))
+                    throw new System.OperationCanceledException("Generation cancelled by user.");
+                yield return ForestGenerator.CreateFarForest(ctx, grid, layout, _settings, forestRoot.transform, cancellationToken);
 
-                EditorUtility.DisplayProgressBar(WindowTitle, "Building HLOD and streaming chunks...", 0.975f);
+                if (CheckCancellation("Building HLOD and streaming chunks...", 0.975f, cancellationToken))
+                    throw new System.OperationCanceledException("Generation cancelled by user.");
                 OptimizationSystem.CreateWorldOptimizationSystem(ctx, layout, _settings, root, roadsRoot, villageRoot, fieldsRoot, forestRoot);
+                yield return null;
 
-                EditorUtility.DisplayProgressBar(WindowTitle, "Final lighting and cameras...", 0.99f);
+                if (CheckCancellation("Final lighting and cameras...", 0.99f, cancellationToken))
+                    throw new System.OperationCanceledException("Generation cancelled by user.");
                 LightingAndEnvironment.CreateLightingRig(root.transform, layout.villageCenter);
                 LightingAndEnvironment.CreateCloudSystem(ctx, layout, _settings, root.transform);
                 LightingAndEnvironment.CreateMainCamera(layout, _settings);
                 LightingAndEnvironment.CreateReflectionProbe(layout, root.transform);
                 LightingAndEnvironment.CreateGlobalVolume(ctx, root.transform);
+                yield return null;
 
                 FinalizeScene(scene, root, layout);
-                Debug.Log($"AAA Rural World complete. Area={_settings.mapAreaKm2:0.0} km^2, world={layout.worldSizeMeters:0} m, tiles={layout.tileCount}x{layout.tileCount}, houses={layout.houses.Count}, roads={layout.roads.Count}");
+                timer.Stop();
+                Debug.Log($"AAA Rural World complete in {timer.Elapsed.TotalSeconds:0.0}s. " +
+                    $"Area={_settings.mapAreaKm2:0.0} km^2, world={layout.worldSizeMeters:0} m, " +
+                    $"tiles={layout.tileCount}x{layout.tileCount}, houses={layout.houses.Count}, roads={layout.roads.Count}");
+            }
+            catch (System.OperationCanceledException)
+            {
+                timer.Stop();
+                Debug.LogWarning($"AAA Rural World generation cancelled after {timer.Elapsed.TotalSeconds:0.0}s.");
+                EditorUtility.DisplayDialog("Generation Cancelled", "The generation was cancelled by the user.", "OK");
             }
             catch (Exception ex)
             {
+                timer.Stop();
                 Debug.LogError("AAA Rural World Builder failed: " + ex);
                 EditorUtility.DisplayDialog("Generation Failed", ex.Message, "OK");
             }
             finally
             {
                 EditorUtility.ClearProgressBar();
+                _buildCancellation?.Dispose();
+                _buildCancellation = null;
             }
         }
 
@@ -206,13 +298,17 @@ namespace AuraLiteWorldGenerator.Editor
             return SceneManager.GetActiveScene();
         }
 
-        private void CreateVillageBuildings(BuildContext ctx, TerrainGrid grid, WorldLayout layout, Transform parent)
+        private IEnumerator CreateVillageBuildings(BuildContext ctx, TerrainGrid grid, WorldLayout layout, Transform parent, CancellationToken cancellationToken)
         {
             GameObject housesRoot = new GameObject("Houses");
             housesRoot.transform.SetParent(parent);
+            const int batchSize = 10;
             for (int i = 0; i < layout.houses.Count; i++)
             {
-                BuildingBuilder.Build(ctx, grid, layout.houses[i], housesRoot.transform, i, _settings.villageStyle);
+                cancellationToken.ThrowIfCancellationRequested();
+                BuildingBuilder.Build(ctx, grid, layout.houses[i], housesRoot.transform, i, _settings.villageStyle, layout.random);
+                if ((i + 1) % batchSize == 0)
+                    yield return null;
             }
         }
 

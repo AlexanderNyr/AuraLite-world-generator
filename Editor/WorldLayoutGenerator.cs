@@ -12,13 +12,17 @@ namespace AuraLiteWorldGenerator.Editor
     {
         public static WorldLayout Generate(GenerationSettings settings)
         {
+            if (settings == null)
+                throw new System.ArgumentNullException(nameof(settings));
+
             WorldLayout layout = new WorldLayout
             {
                 tileSizeMeters = settings.TileSizeMeters,
                 terrainHeightMeters = settings.terrainHeightMeters,
                 waterLevel = WaterLevel,
                 seed = settings.seed,
-                wheatRatio = settings.wheatRatio
+                wheatRatio = settings.wheatRatio,
+                random = new SeededRandom(settings.seed)
             };
 
             float targetSide = settings.TargetSideMeters;
@@ -39,6 +43,7 @@ namespace AuraLiteWorldGenerator.Editor
             CreateRiverPath(layout);
             CreateRoadNetwork(layout, settings);
             PopulateVillageHouses(layout, settings);
+            layout.houseCache = new HouseSpatialCache(layout);
             return layout;
         }
 
@@ -138,9 +143,9 @@ namespace AuraLiteWorldGenerator.Editor
             float length = Mathf.Lerp(170f, 280f, Mathf.Abs(Mathf.Sin(settings.seed * 0.11f + index * 1.7f)));
 
             spur.points.Add(anchor);
-            spur.points.Add(anchor + new Vector3(Random.Range(-12f, 12f), 0f, dir * length * 0.38f));
-            spur.points.Add(anchor + new Vector3(Random.Range(-24f, 24f), 0f, dir * length * 0.76f));
-            spur.points.Add(anchor + new Vector3(Random.Range(-30f, 30f), 0f, dir * length));
+            spur.points.Add(anchor + new Vector3(layout.random.Range(-12f, 12f), 0f, dir * length * 0.38f));
+            spur.points.Add(anchor + new Vector3(layout.random.Range(-24f, 24f), 0f, dir * length * 0.76f));
+            spur.points.Add(anchor + new Vector3(layout.random.Range(-30f, 30f), 0f, dir * length));
             layout.roads.Add(spur);
 
             RoadPath track = new RoadPath
@@ -154,8 +159,8 @@ namespace AuraLiteWorldGenerator.Editor
             float trackDir = dir;
             float trackLength = Mathf.Lerp(340f, 760f, Mathf.Abs(Mathf.Sin(settings.seed * 0.073f + index * 2.7f)));
             track.points.Add(trackStart);
-            track.points.Add(trackStart + new Vector3(Random.Range(-70f, 70f), 0f, trackDir * trackLength * 0.46f));
-            track.points.Add(trackStart + new Vector3(Random.Range(-140f, 140f), 0f, trackDir * trackLength));
+            track.points.Add(trackStart + new Vector3(layout.random.Range(-70f, 70f), 0f, trackDir * trackLength * 0.46f));
+            track.points.Add(trackStart + new Vector3(layout.random.Range(-140f, 140f), 0f, trackDir * trackLength));
             layout.roads.Add(track);
         }
 
@@ -201,11 +206,11 @@ namespace AuraLiteWorldGenerator.Editor
         {
             for (int i = 0; i < 8; i++)
             {
-                float x = layout.villageCenter.x + Random.Range(-layout.villageLengthMeters * 0.38f, layout.villageLengthMeters * 0.38f);
-                float z = layout.villageCenter.z + Random.Range(-layout.villageHalfWidthMeters * 0.85f, layout.villageHalfWidthMeters * 0.85f);
+                float x = layout.villageCenter.x + layout.random.Range(-layout.villageLengthMeters * 0.38f, layout.villageLengthMeters * 0.38f);
+                float z = layout.villageCenter.z + layout.random.Range(-layout.villageHalfWidthMeters * 0.85f, layout.villageHalfWidthMeters * 0.85f);
                 if (ComputeRiverMask(layout, x, z) > 0.12f)
                     continue;
-                HouseSpec barn = BuildingFactory.CreateHouseSpec(new Vector3(x, 0f, z), Random.Range(0f, 360f), BuildingKind.Barn);
+                HouseSpec barn = BuildingFactory.CreateHouseSpec(new Vector3(x, 0f, z), layout.random.Range(0f, 360f), BuildingKind.Barn, layout.random);
                 barn.fenced = false;
                 barn.garden = false;
                 if (CanPlaceHouse(layout, barn.position, 24f))
@@ -227,7 +232,7 @@ namespace AuraLiteWorldGenerator.Editor
 
         private static void AddSpecialBuilding(WorldLayout layout, Vector3 position, float yaw, BuildingKind kind, bool fenced, bool garden, bool annex, float minDistance)
         {
-            HouseSpec spec = BuildingFactory.CreateHouseSpec(position, yaw, kind);
+            HouseSpec spec = BuildingFactory.CreateHouseSpec(position, yaw, kind, layout.random);
             spec.fenced = fenced;
             spec.garden = garden;
             spec.annex = annex;
@@ -246,15 +251,15 @@ namespace AuraLiteWorldGenerator.Editor
                 Vector3 forward = GeometryHelpers.DirectionOnPath(road, d);
                 Vector3 side = Vector3.Cross(Vector3.up, forward).normalized;
 
-                bool placeLeft = sideToggle % 2 == 0 || Random.value > 0.4f;
-                bool placeRight = sideToggle % 3 != 0 || Random.value > 0.62f;
+                bool placeLeft = sideToggle % 2 == 0 || layout.random.Value > 0.4f;
+                bool placeRight = sideToggle % 3 != 0 || layout.random.Value > 0.62f;
                 if (!placeLeft && !placeRight)
                     placeLeft = true;
 
                 if (placeLeft)
-                    TryAddHouse(layout, center + side * (road.width * 0.5f + setback + Random.Range(1f, 5f)), Quaternion.LookRotation(-side, Vector3.up).eulerAngles.y, palette, allowLargeMix);
+                    TryAddHouse(layout, center + side * (road.width * 0.5f + setback + layout.random.Range(1f, 5f)), Quaternion.LookRotation(-side, Vector3.up).eulerAngles.y, palette, allowLargeMix);
                 if (placeRight)
-                    TryAddHouse(layout, center - side * (road.width * 0.5f + setback + Random.Range(1f, 5f)), Quaternion.LookRotation(side, Vector3.up).eulerAngles.y, palette, allowLargeMix);
+                    TryAddHouse(layout, center - side * (road.width * 0.5f + setback + layout.random.Range(1f, 5f)), Quaternion.LookRotation(side, Vector3.up).eulerAngles.y, palette, allowLargeMix);
 
                 sideToggle++;
                 d += spacing;
@@ -263,16 +268,16 @@ namespace AuraLiteWorldGenerator.Editor
 
         private static void TryAddHouse(WorldLayout layout, Vector3 pos, float yaw, BuildingKind[] palette, bool allowLargeMix)
         {
-            if (Mathf.Abs(pos.z - layout.villageCenter.z) > layout.villageHalfWidthMeters + 150f && Random.value > 0.55f)
+            if (Mathf.Abs(pos.z - layout.villageCenter.z) > layout.villageHalfWidthMeters + 150f && layout.random.Value > 0.55f)
                 return;
             if (ComputeLakeMask(layout, pos.x, pos.z) > 0.06f || ComputeRiverMask(layout, pos.x, pos.z) > 0.08f)
                 return;
 
-            BuildingKind kind = palette[Random.Range(0, palette.Length)];
-            if (!allowLargeMix && kind == BuildingKind.LongHouse && Random.value > 0.25f)
+            BuildingKind kind = palette[layout.random.Range(0, palette.Length)];
+            if (!allowLargeMix && kind == BuildingKind.LongHouse && layout.random.Value > 0.25f)
                 kind = BuildingKind.Cottage;
 
-            HouseSpec spec = BuildingFactory.CreateHouseSpec(pos, yaw, kind);
+            HouseSpec spec = BuildingFactory.CreateHouseSpec(pos, yaw, kind, layout.random);
             if (CanPlaceHouse(layout, pos, Mathf.Max(spec.footprint.x, spec.footprint.y) * 1.55f))
                 layout.houses.Add(spec);
         }
@@ -338,13 +343,44 @@ namespace AuraLiteWorldGenerator.Editor
         public static float ComputeHouseMask(WorldLayout layout, float worldX, float worldZ)
         {
             float mask = 0f;
-            Vector2 p = new Vector2(worldX, worldZ);
-            for (int i = 0; i < layout.houses.Count; i++)
+
+            if (layout.houseCache != null)
             {
-                float rr = Mathf.Max(layout.houses[i].footprint.x, layout.houses[i].footprint.y) * 0.9f;
-                float d = Vector2.Distance(p, new Vector2(layout.houses[i].position.x, layout.houses[i].position.z));
-                float t = 1f - Mathf.Clamp01((d - rr * 0.35f) / (rr * 0.85f));
-                mask = Mathf.Max(mask, t);
+                List<HouseSpec> nearby = layout.houseCache.GetNearby(worldX, worldZ);
+                if (nearby != null)
+                {
+                    for (int i = 0; i < nearby.Count; i++)
+                    {
+                        float rr = Mathf.Max(nearby[i].footprint.x, nearby[i].footprint.y) * 0.9f;
+                        float dx = worldX - nearby[i].position.x;
+                        float dz = worldZ - nearby[i].position.z;
+                        float sqrDist = dx * dx + dz * dz;
+                        float sqrThreshold = rr * rr * 1.44f; // (1.2 * rr)^2
+                        if (sqrDist > sqrThreshold)
+                            continue;
+
+                        float d = Mathf.Sqrt(sqrDist);
+                        float t = 1f - Mathf.Clamp01((d - rr * 0.35f) / (rr * 0.85f));
+                        mask = Mathf.Max(mask, t);
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < layout.houses.Count; i++)
+                {
+                    float rr = Mathf.Max(layout.houses[i].footprint.x, layout.houses[i].footprint.y) * 0.9f;
+                    float dx = worldX - layout.houses[i].position.x;
+                    float dz = worldZ - layout.houses[i].position.z;
+                    float sqrDist = dx * dx + dz * dz;
+                    float sqrThreshold = rr * rr * 1.44f;
+                    if (sqrDist > sqrThreshold)
+                        continue;
+
+                    float d = Mathf.Sqrt(sqrDist);
+                    float t = 1f - Mathf.Clamp01((d - rr * 0.35f) / (rr * 0.85f));
+                    mask = Mathf.Max(mask, t);
+                }
             }
             return mask;
         }

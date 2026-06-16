@@ -187,19 +187,14 @@ namespace AuraLiteWorldGenerator.Editor
         {
             List<GameObject> result = new List<GameObject>();
             Dictionary<string, GameObject> buckets = new Dictionary<string, GameObject>();
-            List<Transform> units = new List<Transform>();
-            Transform[] all = sourceRoot.GetComponentsInChildren<Transform>(true);
-            for (int i = 0; i < all.Length; i++)
-            {
-                if (all[i] == sourceRoot.transform)
-                    continue;
-                if (all[i].GetComponent<LODGroup>() != null)
-                    units.Add(all[i]);
-            }
+            LODGroup[] lodGroups = sourceRoot.GetComponentsInChildren<LODGroup>(true);
 
-            for (int i = 0; i < units.Count; i++)
+            for (int i = 0; i < lodGroups.Length; i++)
             {
-                Transform child = units[i];
+                Transform child = lodGroups[i].transform;
+                if (child == sourceRoot.transform)
+                    continue;
+
                 Bounds b = GeometryHelpers.CalculateHierarchyBounds(child.gameObject);
                 Vector3 c = b.center;
                 int cx = Mathf.FloorToInt(c.x / chunkSize);

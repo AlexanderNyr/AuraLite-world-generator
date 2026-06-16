@@ -21,6 +21,12 @@ namespace AuraLiteWorldGenerator.Editor
             if (parts.Length == 0 || parts[0] != "Assets")
                 throw new ArgumentException("Path must start with Assets: " + path, nameof(path));
 
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if (string.IsNullOrWhiteSpace(parts[i]))
+                    throw new ArgumentException("Folder path contains empty segments: " + path, nameof(path));
+            }
+
             string current = parts[0];
             for (int i = 1; i < parts.Length; i++)
             {
@@ -49,6 +55,9 @@ namespace AuraLiteWorldGenerator.Editor
 
         public static Material CreateOpaqueMaterialAsset(string path, Color color, float metallic, float smoothness, Shader shader)
         {
+            if (shader == null)
+                throw new ArgumentNullException(nameof(shader), "Cannot create material without a shader at " + path);
+
             DeleteExistingAsset<Material>(path);
             Material mat = new Material(shader);
             mat.name = Path.GetFileNameWithoutExtension(path);

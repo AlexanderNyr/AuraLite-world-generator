@@ -1,4 +1,3 @@
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -55,8 +54,8 @@ namespace AuraLiteWorldGenerator.Editor
                 }
             }
 
-            MarkStaticRecursive(hedges);
-            MarkStaticRecursive(crops);
+            ChunkedMeshCombiner.CombineChildrenByChunkAndMaterial(hedges.transform, 400f);
+            ChunkedMeshCombiner.CombineChildrenByChunkAndMaterial(crops.transform, 400f);
         }
 
         private static void CreateHedgeSegment(BuildContext ctx, TerrainGrid grid, Transform parent, Vector3 a, Vector3 b)
@@ -116,20 +115,20 @@ namespace AuraLiteWorldGenerator.Editor
             int count = Mathf.RoundToInt(14f * settings.qualityBoost);
             for (int i = 0; i < count; i++)
             {
-                Vector3 pos = new Vector3(Random.Range(layout.villageCenter.x - 1200f, layout.villageCenter.x + 1200f), 0f, Random.Range(layout.villageCenter.z - 1200f, layout.villageCenter.z + 1200f));
+                Vector3 pos = new Vector3(layout.random.Range(layout.villageCenter.x - 1200f, layout.villageCenter.x + 1200f), 0f, layout.random.Range(layout.villageCenter.z - 1200f, layout.villageCenter.z + 1200f));
                 if (WorldLayoutGenerator.ComputeVillageMask(layout, pos.x, pos.z) > 0.18f || WorldLayoutGenerator.ComputeRoadMask(layout, pos.x, pos.z) > 0.10f || WorldLayoutGenerator.ComputeLakeMask(layout, pos.x, pos.z) > 0.06f || WorldLayoutGenerator.ComputeRiverMask(layout, pos.x, pos.z) > 0.08f)
                     continue;
                 pos.y = GeometryHelpers.SampleTerrainHeight(grid, pos);
                 GameObject pile = new GameObject("Pile_" + i);
                 pile.transform.SetParent(root.transform);
                 pile.transform.position = pos;
-                int stones = Random.Range(4, 8);
+                int stones = layout.random.Range(4, 8);
                 for (int s = 0; s < stones; s++)
                 {
-                    GameObjectBuilder.CreateSphereChild(pile.transform, "Stone_" + s, new Vector3(Random.Range(-1.2f, 1.2f), Random.Range(0.1f, 0.5f), Random.Range(-1.0f, 1.0f)), Vector3.one * Random.Range(0.35f, 0.9f), ctx.stoneMat);
+                    GameObjectBuilder.CreateSphereChild(pile.transform, "Stone_" + s, new Vector3(layout.random.Range(-1.2f, 1.2f), layout.random.Range(0.1f, 0.5f), layout.random.Range(-1.0f, 1.0f)), Vector3.one * layout.random.Range(0.35f, 0.9f), ctx.stoneMat);
                 }
             }
-            MarkStaticRecursive(root);
+            ChunkedMeshCombiner.CombineChildrenByChunkAndMaterial(root.transform, 400f);
         }
 
         public static void CreateFieldProps(BuildContext ctx, TerrainGrid grid, WorldLayout layout, GenerationSettings settings, Transform parent)
@@ -180,20 +179,8 @@ namespace AuraLiteWorldGenerator.Editor
                 }
             }
 
-            MarkStaticRecursive(hayRoot);
+            ChunkedMeshCombiner.CombineChildrenByChunkAndMaterial(hayRoot.transform, 400f);
         }
 
-        private static void MarkStaticRecursive(GameObject root)
-        {
-            GameObjectUtility.SetStaticEditorFlags(root,
-                StaticEditorFlags.BatchingStatic |
-                StaticEditorFlags.ContributeGI |
-                StaticEditorFlags.OccluderStatic |
-                StaticEditorFlags.OccludeeStatic |
-                StaticEditorFlags.ReflectionProbeStatic);
-
-            for (int i = 0; i < root.transform.childCount; i++)
-                MarkStaticRecursive(root.transform.GetChild(i).gameObject);
-        }
     }
 }

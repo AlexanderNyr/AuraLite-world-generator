@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using AuraLiteWorldGenerator.Runtime;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.Rendering.Universal;
 
 namespace AuraLiteWorldGenerator.Editor
 {
@@ -49,6 +48,10 @@ namespace AuraLiteWorldGenerator.Editor
         public Vector3 lakeCenter;
         public int seed;
         public float wheatRatio;
+        [System.NonSerialized]
+        public SeededRandom random;
+        [System.NonSerialized]
+        public HouseSpatialCache houseCache;
         public readonly List<RoadPath> roads = new List<RoadPath>();
         public readonly List<Vector3> riverPoints = new List<Vector3>();
         public readonly List<HouseSpec> houses = new List<HouseSpec>();

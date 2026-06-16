@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -109,6 +110,22 @@ namespace AuraLiteWorldGenerator.Editor
             }
             for (int i = 0; i < children.Count; i++)
                 children[i].SetParent(target, false);
+        }
+
+        /// <summary>
+        /// Marks a GameObject and all its descendants with the static flags used by the generator.
+        /// </summary>
+        public static void MarkStaticRecursive(GameObject root)
+        {
+            GameObjectUtility.SetStaticEditorFlags(root,
+                StaticEditorFlags.BatchingStatic |
+                StaticEditorFlags.ContributeGI |
+                StaticEditorFlags.OccluderStatic |
+                StaticEditorFlags.OccludeeStatic |
+                StaticEditorFlags.ReflectionProbeStatic);
+
+            for (int i = 0; i < root.transform.childCount; i++)
+                MarkStaticRecursive(root.transform.GetChild(i).gameObject);
         }
     }
 }

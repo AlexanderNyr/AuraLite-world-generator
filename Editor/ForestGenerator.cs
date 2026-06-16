@@ -1,4 +1,5 @@
-using UnityEditor;
+using System.Collections;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -9,7 +10,7 @@ namespace AuraLiteWorldGenerator.Editor
     /// </summary>
     public static class ForestGenerator
     {
-        public static void CreateFarForest(BuildContext ctx, TerrainGrid grid, WorldLayout layout, GenerationSettings settings, Transform parent)
+        public static IEnumerator CreateFarForest(BuildContext ctx, TerrainGrid grid, WorldLayout layout, GenerationSettings settings, Transform parent, CancellationToken cancellationToken = default)
         {
             GameObject edgeRoot = new GameObject("ForestEdge");
             edgeRoot.transform.SetParent(parent);
@@ -22,9 +23,11 @@ namespace AuraLiteWorldGenerator.Editor
             float endZ = layout.worldSizeMeters - 80f;
             float step = layout.worldSizeMeters > 9000f ? Mathf.Lerp(38f, 26f, Mathf.InverseLerp(1f, 3f, settings.qualityBoost)) : Mathf.Lerp(30f, 18f, Mathf.InverseLerp(1f, 3f, settings.qualityBoost));
             int created = 0;
+            const int yieldBatch = 50;
 
             for (float z = startZ; z <= endZ; z += step)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 for (float x = 80f; x <= layout.worldSizeMeters - 80f; x += step)
                 {
                     float forest = WorldLayoutGenerator.ComputeForestMask(layout, x, z);
@@ -42,7 +45,7 @@ namespace AuraLiteWorldGenerator.Editor
                     GameObject tree = new GameObject((pine ? "Pine_" : "Tree_") + created++);
                     tree.transform.SetParent(edgeBand ? edgeRoot.transform : (pine ? pines.transform : broadleaf.transform));
                     tree.transform.position = pos;
-                    tree.transform.rotation = Quaternion.Euler(Random.Range(-2f, 2f), GeometryHelpers.Hash01((int)x, (int)z, layout.seed + 47) * 360f, Random.Range(-2f, 2f));
+                    tree.transform.rotation = Quaternion.Euler(layout.random.Range(-2f, 2f), GeometryHelpers.Hash01((int)x, (int)z, layout.seed + 47) * 360f, layout.random.Range(-2f, 2f));
                     tree.transform.localScale = Vector3.one * (pine ? Mathf.Lerp(0.95f, 1.70f, forest) : Mathf.Lerp(0.88f, 1.55f, forest));
 
                     if (pine)
@@ -56,22 +59,13 @@ namespace AuraLiteWorldGenerator.Editor
                         VegetationBuilder.CreateShrubCluster(ctx, tree.transform, new Vector3(-0.6f, 0f, 0.5f), 0.6f);
                     }
 
-                    MarkStaticRecursive(tree);
+                    GameObjectBuilder.MarkStaticRecursive(tree);
+
+                    if (created % yieldBatch == 0)
+                        yield return null;
                 }
             }
         }
 
-        private static void MarkStaticRecursive(GameObject root)
-        {
-            GameObjectUtility.SetStaticEditorFlags(root,
-                StaticEditorFlags.BatchingStatic |
-                StaticEditorFlags.ContributeGI |
-                StaticEditorFlags.OccluderStatic |
-                StaticEditorFlags.OccludeeStatic |
-                StaticEditorFlags.ReflectionProbeStatic);
-
-            for (int i = 0; i < root.transform.childCount; i++)
-                MarkStaticRecursive(root.transform.GetChild(i).gameObject);
-        }
     }
 }
