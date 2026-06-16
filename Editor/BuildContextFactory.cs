@@ -80,10 +80,10 @@ namespace AuraLiteWorldGenerator.Editor
                 ctx.barkMat, ctx.pineMat, ctx.leafMat, ctx.glassMat, ctx.wheatBaleMat, ctx.waterMat, ctx.grassBladeMat,
                 ctx.wheatBladeMat, ctx.logWallMat, ctx.copperRoofMat, ctx.forgeFireMat, ctx.cloudMat);
 
-            ctx.grassLayer = AssetFactory.CreateOrReplaceTerrainLayer(settings.outputRoot + "/TerrainLayer_Grass.terrainlayer", ctx.grassTex, new Vector2(32f, 32f), 0.02f);
-            ctx.wheatLayer = AssetFactory.CreateOrReplaceTerrainLayer(settings.outputRoot + "/TerrainLayer_Wheat.terrainlayer", ctx.wheatTex, new Vector2(44f, 44f), 0.02f);
-            ctx.dirtLayer = AssetFactory.CreateOrReplaceTerrainLayer(settings.outputRoot + "/TerrainLayer_Dirt.terrainlayer", ctx.dirtTex, new Vector2(18f, 18f), 0.02f);
-            ctx.forestLayer = AssetFactory.CreateOrReplaceTerrainLayer(settings.outputRoot + "/TerrainLayer_Forest.terrainlayer", ctx.forestTex, new Vector2(26f, 26f), 0.02f);
+            ctx.grassLayer = AssetFactory.CreateOrReplaceTerrainLayer(settings.outputRoot + "/TerrainLayer_Grass.terrainlayer", ctx.grassTex, new Vector2(32f, 32f), 0f);
+            ctx.wheatLayer = AssetFactory.CreateOrReplaceTerrainLayer(settings.outputRoot + "/TerrainLayer_Wheat.terrainlayer", ctx.wheatTex, new Vector2(44f, 44f), 0f);
+            ctx.dirtLayer = AssetFactory.CreateOrReplaceTerrainLayer(settings.outputRoot + "/TerrainLayer_Dirt.terrainlayer", ctx.dirtTex, new Vector2(18f, 18f), 0f);
+            ctx.forestLayer = AssetFactory.CreateOrReplaceTerrainLayer(settings.outputRoot + "/TerrainLayer_Forest.terrainlayer", ctx.forestTex, new Vector2(26f, 26f), 0f);
 
             ctx.roofMesh = AssetFactory.CreateOrReplaceMeshAsset(ctx.meshesFolder + "/MESH_RoofPrism.asset", MeshFactory.CreateRoofPrismMesh());
             ctx.coneMesh = AssetFactory.CreateOrReplaceMeshAsset(ctx.meshesFolder + "/MESH_Cone.asset", MeshFactory.CreateConeMesh(18));

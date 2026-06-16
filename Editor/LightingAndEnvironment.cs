@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using AuraLiteWorldGenerator.Runtime;
 
 namespace AuraLiteWorldGenerator.Editor
 {
@@ -13,8 +14,8 @@ namespace AuraLiteWorldGenerator.Editor
         {
             RenderSettings.ambientMode = AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = new Color(0.72f, 0.80f, 0.90f);
-            RenderSettings.ambientEquatorColor = new Color(0.51f, 0.58f, 0.49f);
-            RenderSettings.ambientGroundColor = new Color(0.21f, 0.23f, 0.18f);
+            RenderSettings.ambientEquatorColor = new Color(0.45f, 0.52f, 0.43f);
+            RenderSettings.ambientGroundColor = new Color(0.12f, 0.14f, 0.10f); // Darker ground ambient
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogStartDistance = settings.fogStartKm * 1000f;
@@ -39,7 +40,7 @@ namespace AuraLiteWorldGenerator.Editor
             sunGO.transform.rotation = Quaternion.Euler(34f, -24f, 0f);
             Light sun = sunGO.AddComponent<Light>();
             sun.type = LightType.Directional;
-            sun.intensity = 1.20f;
+            sun.intensity = 1.05f; // Reduced intensity
             sun.color = new Color(1f, 0.96f, 0.91f);
             sun.shadows = LightShadows.Soft;
             sun.shadowStrength = 0.92f;
@@ -133,7 +134,7 @@ namespace AuraLiteWorldGenerator.Editor
             probe.refreshMode = ReflectionProbeRefreshMode.OnAwake;
             probe.timeSlicingMode = ReflectionProbeTimeSlicingMode.AllFacesAtOnce;
             probe.size = new Vector3(layout.villageLengthMeters * 2.4f, 120f, layout.villageLengthMeters * 2.4f);
-            probe.intensity = 1f;
+            probe.intensity = 0.65f; // Reduced intensity
         }
 
         public static void CreateGlobalVolume(BuildContext ctx, Transform parent)

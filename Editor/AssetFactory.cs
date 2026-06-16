@@ -39,18 +39,12 @@ namespace AuraLiteWorldGenerator.Editor
 
         public static Shader FindBestLitShader()
         {
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
-            if (shader == null) shader = Shader.Find("Standard");
-            if (shader == null) shader = Shader.Find("Diffuse");
-            return shader;
+            return Shader.Find("Universal Render Pipeline/Lit");
         }
 
         public static Shader FindBestTerrainShader()
         {
-            Shader shader = Shader.Find("Universal Render Pipeline/Terrain/Lit");
-            if (shader == null) shader = Shader.Find("Nature/Terrain/Standard");
-            if (shader == null) shader = Shader.Find("Standard");
-            return shader;
+            return Shader.Find("Universal Render Pipeline/Terrain/Lit");
         }
 
         public static Material CreateOpaqueMaterialAsset(string path, Color color, float metallic, float smoothness, Shader shader)
@@ -213,45 +207,29 @@ namespace AuraLiteWorldGenerator.Editor
 
         public static void SetupURPVolumeProfile(VolumeProfile profile)
         {
-            if (profile == null)
-                return;
+            if (profile == null) return;
 
-            Bloom bloom = profile.Add<Bloom>(true);
+            // Bloom & Tonemapping
+            var bloom = profile.Add<Bloom>(true);
             bloom.active = true;
-            bloom.threshold.overrideState = true;
-            bloom.threshold.value = 0.95f;
             bloom.intensity.overrideState = true;
-            bloom.intensity.value = 0.42f;
-            bloom.scatter.overrideState = true;
-            bloom.scatter.value = 0.72f;
+            bloom.intensity.value = 0.5f;
 
-            ColorAdjustments colorAdjustments = profile.Add<ColorAdjustments>(true);
-            colorAdjustments.active = true;
-            colorAdjustments.postExposure.overrideState = true;
-            colorAdjustments.postExposure.value = 0.18f;
-            colorAdjustments.contrast.overrideState = true;
-            colorAdjustments.contrast.value = 12f;
-            colorAdjustments.saturation.overrideState = true;
-            colorAdjustments.saturation.value = 8f;
-
-            Tonemapping tonemapping = profile.Add<Tonemapping>(true);
+            var tonemapping = profile.Add<Tonemapping>(true);
             tonemapping.active = true;
             tonemapping.mode.overrideState = true;
             tonemapping.mode.value = TonemappingMode.ACES;
 
-            Vignette vignette = profile.Add<Vignette>(true);
-            vignette.active = true;
-            vignette.intensity.overrideState = true;
-            vignette.intensity.value = 0.12f;
-            vignette.smoothness.overrideState = true;
-            vignette.smoothness.value = 0.40f;
-
-            WhiteBalance whiteBalance = profile.Add<WhiteBalance>(true);
-            whiteBalance.active = true;
-            whiteBalance.temperature.overrideState = true;
-            whiteBalance.temperature.value = 2f;
-            whiteBalance.tint.overrideState = true;
-            whiteBalance.tint.value = -1f;
+            var colorAdjustments = profile.Add<ColorAdjustments>(true);
+            colorAdjustments.active = true;
+            colorAdjustments.contrast.overrideState = true;
+            colorAdjustments.contrast.value = 15f;
+            colorAdjustments.saturation.overrideState = true;
+            colorAdjustments.saturation.value = 10f;
+            
+            // Note: In Unity 6 URP, Volumetric Clouds and physically based sky components 
+            // are available but may have different names or require specific using directives.
+            // To ensure compilation, we stick to core URP volume components.
         }
 
         public static void EnableEmission(Material material, Color emissionColor)
