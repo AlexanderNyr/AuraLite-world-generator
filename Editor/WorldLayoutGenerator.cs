@@ -220,14 +220,14 @@ namespace AuraLiteWorldGenerator.Editor
 
         private static void AddSpecialBuildings(WorldLayout layout, GenerationSettings settings)
         {
-            AddSpecialBuilding(layout, new Vector3(layout.villageCenter.x + layout.villageLengthMeters * 0.24f, 0f, layout.villageCenter.z - layout.villageHalfWidthMeters * 0.74f), 12f, BuildingKind.Manor, true, true, true);
-            AddSpecialBuilding(layout, new Vector3(layout.villageCenter.x - layout.villageLengthMeters * 0.10f, 0f, layout.villageCenter.z + layout.villageHalfWidthMeters * 0.14f), -6f, BuildingKind.Chapel, false, false, false);
-            AddSpecialBuilding(layout, new Vector3(layout.villageCenter.x + layout.villageLengthMeters * 0.06f, 0f, layout.villageCenter.z - layout.villageHalfWidthMeters * 0.10f), 18f, BuildingKind.Forge, false, false, true);
-            AddSpecialBuilding(layout, layout.lakeCenter + new Vector3(layout.lakeRadiusX * 0.92f, 0f, layout.lakeRadiusZ * 0.16f), -10f, BuildingKind.Mill, false, false, false);
-            AddSpecialBuilding(layout, new Vector3(layout.villageCenter.x - layout.villageLengthMeters * 0.02f, 0f, layout.villageCenter.z - layout.villageHalfWidthMeters * 0.04f), 8f, BuildingKind.Tavern, false, false, true);
-            AddSpecialBuilding(layout, new Vector3(layout.villageCenter.x + layout.villageLengthMeters * 0.38f, 0f, layout.villageCenter.z + layout.villageHalfWidthMeters * 0.52f), 22f, BuildingKind.Stable, true, false, false);
-            AddSpecialBuilding(layout, new Vector3(layout.villageCenter.x - layout.villageLengthMeters * 0.32f, 0f, layout.villageCenter.z - layout.villageHalfWidthMeters * 0.52f), -18f, BuildingKind.Granary, false, false, false);
-            AddSpecialBuilding(layout, layout.lakeCenter + new Vector3(layout.lakeRadiusX * 0.34f, 0f, layout.lakeRadiusZ * 0.92f), 164f, BuildingKind.Boathouse, false, false, false);
+            AddSpecialBuilding(layout, new Vector3(layout.villageCenter.x + layout.villageLengthMeters * 0.28f, 0f, layout.villageCenter.z - layout.villageHalfWidthMeters * 0.85f), 12f, BuildingKind.Manor, true, true, true);
+            AddSpecialBuilding(layout, new Vector3(layout.villageCenter.x - layout.villageLengthMeters * 0.15f, 0f, layout.villageCenter.z + layout.villageHalfWidthMeters * 0.25f), -6f, BuildingKind.Chapel, false, false, false);
+            AddSpecialBuilding(layout, new Vector3(layout.villageCenter.x + layout.villageLengthMeters * 0.12f, 0f, layout.villageCenter.z - layout.villageHalfWidthMeters * 0.20f), 18f, BuildingKind.Forge, false, false, true);
+            AddSpecialBuilding(layout, layout.lakeCenter + new Vector3(layout.lakeRadiusX * 1.15f, 0f, layout.lakeRadiusZ * 0.25f), -10f, BuildingKind.Mill, false, false, false);
+            AddSpecialBuilding(layout, new Vector3(layout.villageCenter.x - layout.villageLengthMeters * 0.05f, 0f, layout.villageCenter.z - layout.villageHalfWidthMeters * 0.15f), 8f, BuildingKind.Tavern, false, false, true);
+            AddSpecialBuilding(layout, new Vector3(layout.villageCenter.x + layout.villageLengthMeters * 0.45f, 0f, layout.villageCenter.z + layout.villageHalfWidthMeters * 0.65f), 22f, BuildingKind.Stable, true, false, false);
+            AddSpecialBuilding(layout, new Vector3(layout.villageCenter.x - layout.villageLengthMeters * 0.38f, 0f, layout.villageCenter.z - layout.villageHalfWidthMeters * 0.65f), -18f, BuildingKind.Granary, false, false, false);
+            AddSpecialBuilding(layout, layout.lakeCenter + new Vector3(layout.lakeRadiusX * 0.45f, 0f, layout.lakeRadiusZ * 1.15f), 164f, BuildingKind.Boathouse, false, false, false);
         }
 
         private static void AddSpecialBuilding(WorldLayout layout, Vector3 position, float yaw, BuildingKind kind, bool fenced, bool garden, bool annex)
@@ -290,25 +290,31 @@ namespace AuraLiteWorldGenerator.Editor
 
         public static bool CanPlaceHouse(WorldLayout layout, HouseSpec spec)
         {
-            float padding = 2.5f;
+            float housePadding = 4.0f; // Gap between houses
+            float fencePadding = spec.fenced ? 6.0f : 0f; // Extra space if there's a fence
+            float totalPadding = housePadding + fencePadding;
+
             Vector2 p = new Vector2(spec.position.x, spec.position.z);
             Vector2 s = spec.footprint;
             float yaw = spec.yaw;
 
-            // 1. Check against other houses using OBB
+            // 1. Check against other houses using OBB (Oriented Bounding Box)
             for (int i = 0; i < layout.houses.Count; i++)
             {
                 var other = layout.houses[i];
-                if (GeometryHelpers.IntersectRects(p, s, yaw, new Vector2(other.position.x, other.position.z), other.footprint, other.yaw, padding))
+                float otherFencePadding = other.fenced ? 6.0f : 0f;
+                float combinedPadding = totalPadding + otherFencePadding;
+
+                if (GeometryHelpers.IntersectRects(p, s, yaw, new Vector2(other.position.x, other.position.z), other.footprint, other.yaw, combinedPadding))
                     return false;
             }
 
             // 2. Check against roads
-            float myRadius = Mathf.Max(s.x, s.y) * 0.5f + 1.0f;
+            float myRadius = Mathf.Max(s.x, s.y) * 0.5f + (spec.fenced ? 8.0f : 2.0f);
             for (int i = 0; i < layout.roads.Count; i++)
             {
                 float dist = GeometryHelpers.DistancePointPolylineXZ(spec.position, layout.roads[i]);
-                if (dist < (layout.roads[i].width * 0.5f + myRadius + 1.5f))
+                if (dist < (layout.roads[i].width * 0.5f + myRadius + 2.0f))
                     return false;
             }
 
