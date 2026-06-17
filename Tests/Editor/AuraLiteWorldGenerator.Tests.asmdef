@@ -3,7 +3,6 @@
     "rootNamespace": "AuraLiteWorldGenerator.Tests",
     "references": [
         "AuraLiteWorldGenerator.Runtime",
-        "AuraLiteWorldGenerator.Shared",
         "AuraLiteWorldGenerator.Editor",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"

@@ -137,14 +137,12 @@ namespace AuraLiteWorldGenerator.Runtime
 
         private void SetupRuntimeComponents()
         {
-            // Add DayNightCycle if not present
             if (FindObjectOfType<DayNightCycle>() == null)
             {
                 var dnGO = new GameObject("DayNightCycle");
                 dnGO.AddComponent<DayNightCycle>();
             }
 
-            // Add WeatherSystem if not present
             if (FindObjectOfType<WeatherSystem>() == null)
             {
                 var wsGO = new GameObject("WeatherSystem");

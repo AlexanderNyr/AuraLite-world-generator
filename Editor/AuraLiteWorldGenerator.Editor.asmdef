@@ -3,7 +3,6 @@
     "rootNamespace": "AuraLiteWorldGenerator.Editor",
     "references": [
         "AuraLiteWorldGenerator.Runtime",
-        "AuraLiteWorldGenerator.Shared",
         "Unity.Burst",
         "Unity.Mathematics",
         "Unity.RenderPipelines.Universal.Runtime",

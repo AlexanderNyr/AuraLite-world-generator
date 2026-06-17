@@ -257,7 +257,6 @@ namespace AuraLiteWorldGenerator.Editor
                 pipeline.AddModule(new VegetationModule());
                 pipeline.AddModule(new PropsModule());
                 pipeline.AddModule(new OptimizationModule());
-                pipeline.AddModule(new NavMeshModule());
                 pipeline.AddModule(new LightingModule());
                 pipeline.AddModule(new WeatherModule());
                 pipeline.AddModule(new DayNightModule());

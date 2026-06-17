@@ -78,11 +78,6 @@ namespace AuraLiteWorldGenerator.Runtime
         public const float DefaultSunriseHour = 6f;
         public const float DefaultSunsetHour = 20f;
 
-        // NavMesh defaults
-        public const float DefaultNavMeshAgentRadius = 0.5f;
-        public const float DefaultNavMeshAgentHeight = 2f;
-        public const float DefaultNavMeshAgentSlope = 45f;
-        public const float DefaultNavMeshAgentClimb = 0.75f;
     }
 
     public enum BuildingKind
