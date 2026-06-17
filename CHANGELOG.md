@@ -1,24 +1,23 @@
 # Changelog
 
-All notable changes to the AuraLite Rural World Generator project will be documented in this file.
-
-## [1.0.1] - 2026-06-16
+## [1.0.2] - 2026-06-17
 
 ### Added
-- **Unity 6 Support:** Full optimization and support for Unity 6 (6000.3.5f2) and URP 17.
-- **Preview System:** Added "Update Preview Layout" button and Scene View Gizmos to visualize the world layout (roads, houses, water) before full generation.
-- **Volumetric Clouds:** Integrated native Unity 6 Volumetric Clouds with high-quality settings (128 primary steps, shadows enabled).
-- **Physically Based Sky:** Replaced procedural skybox with a physically correct atmospheric model in the Global Volume.
-- **Volumetric Fog:** Native fog integration in the Volume profile for deeper environmental atmosphere.
+- Complete architecture refactor (Pipeline, DI, Plugins).
+- Biome system with 5 built-in types.
+- Hydraulic and Thermal erosion for terrain.
+- Procedural PBR material generation.
+- Expanded building library (21 kinds).
+- Unity Jobs & Burst support for performance.
+- Unit and Integration tests.
+- FBX export support.
+- Runtime API for in-game generation.
 
 ### Changed
-- **Placement Logic:** Completely overhauled house placement. Buildings now check for collisions against roads, rivers, and other houses using their actual footprint dimensions.
-- **Generation Stages:** Refactored the generator to run in strict logical stages: Hydrology -> Infrastructure -> Buildings.
-- **Visual Improvements:** Set terrain smoothness to 0 to remove "plastic" reflections. Adjusted Sun intensity and Reflection Probe settings for a more natural look.
-- **Code Quality:** Removed legacy shader fallbacks (Standard/Diffuse) in favor of strict URP Lit requirements.
+- Migrated from monolithic static methods to modular instance-based pipeline.
+- Replaced primitive-based buildings with extruded geometry.
+- Upgraded water rendering to URP HLSL with Gerstner waves.
 
 ### Fixed
-- Fixed compilation error CS1626 (yield return in try-catch block) in the main editor window.
-- Fixed ambiguous `Debug` reference between `System.Diagnostics` and `UnityEngine`.
-- Fixed missing namespace reference for `CameraFacingBillboard` in `LightingAndEnvironment.cs`.
-- Fixed buildings potentially spawning on water or overlapping road geometry.
+- Fixed building overlap issues using spatial caching.
+- Optimized draw calls via texture atlasing and mesh combining.

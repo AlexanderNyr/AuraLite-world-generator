@@ -164,5 +164,22 @@ namespace AuraLiteWorldGenerator.Editor
             tris.Add(start + 1); tris.Add(start + 2); tris.Add(start + 0);
             tris.Add(start + 2); tris.Add(start + 3); tris.Add(start + 0);
         }
+
+        public static Mesh CreateCubeMesh()
+        {
+            Mesh mesh = new Mesh();
+            Vector3[] vertices = {
+                new Vector3(-0.5f, -0.5f, -0.5f), new Vector3(0.5f, -0.5f, -0.5f), new Vector3(0.5f, 0.5f, -0.5f), new Vector3(-0.5f, 0.5f, -0.5f),
+                new Vector3(-0.5f, -0.5f, 0.5f), new Vector3(0.5f, -0.5f, 0.5f), new Vector3(0.5f, 0.5f, 0.5f), new Vector3(-0.5f, 0.5f, 0.5f),
+            };
+            int[] triangles = {
+                0, 2, 1, 0, 3, 2, 2, 3, 7, 2, 7, 6, 1, 2, 6, 1, 6, 5, 0, 1, 5, 0, 5, 4, 3, 0, 4, 3, 4, 7, 4, 5, 6, 4, 6, 7
+            };
+            mesh.vertices = vertices;
+            mesh.triangles = triangles;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            return mesh;
+        }
     }
 }

@@ -1,69 +1,55 @@
-# AuraLite Rural World Generator (Unity 6 Edition)
+# AuraLite World Generator v2.0 (Unity 6 URP)
 
-A procedural generator for large rural scenes in Unity 6 (URP). It creates a village with streets, roads, fields, a distant forest, a lake, a river, and a full LOD/HLOD system. Optimized for AAA visuals using Unity 6's latest rendering features.
+A professional-grade procedural world generation platform for Unity 6, designed for high-performance rural environments.
 
-## What It Does
+## Features
 
-- Generates a world from 20 to 150 km^2.
-- Creates a tiled Terrain grid (1024x1024 m or 2048x2048 m tiles).
-- Places houses, barns, mills, forges, taverns, stables, and more.
-- Builds roads, bridges, fences, and roadside props.
-- Adds fields, wheat, stone piles, and hay bales.
-- Generates a distant forest with LOD and distance-based streaming.
-- **AAA Visuals:** Physically Based Sky, Volumetric Clouds, and Volumetric Fog.
-- **Interactive Preview:** Real-time Gizmo-based preview of the layout before generation.
+### Phase 1: Architecture
+- **Pipeline-Based Generation:** Decoupled modules for assets, terrain, hydrology, and infrastructure.
+- **Dependency Injection:** Lightweight service container for modularity and testability.
+- **Plugin System:** Extend building types, biomes, and strategies without modifying the core.
+- **Structured Logging:** Detailed generation reports with timing and validation.
 
-## New in Version 1.0.1
+### Phase 2: Core Generation
+- **Multi-Biome System:** Blended biomes based on procedural moisture and temperature.
+- **Hydraulic Erosion:** Realistic landscape weathering (Hydraulic & Thermal).
+- **Advanced Hydrology:** Flow-accumulation based river networks and basin-filling lakes.
+- **Organic Road Networks:** A* pathfinding and L-System based rural roads.
 
-- **Full Unity 6 Support:** Optimized for version 6000.3.5f2 and URP 17.
-- **Smart Placement:** Overhauled collision detection to prevent overlapping houses or buildings on roads.
-- **Visual Polish:** Realistic non-reflective terrain and improved atmospheric lighting.
-- **Interactive Layout Preview:** Visualize roads, houses, and water in the Scene View via the "Update Preview" button.
+### Phase 3: Visual Quality
+- **Procedural PBR:** Automatic generation of Lit materials with Normal and Mask maps.
+- **Enhanced Geometry:** Detailed architectural meshes (frames, eaves, chimneys) instead of primitives.
+- **AAA Water Shader:** Gerstner waves, foam, and flow-map support.
+- **Volumetrics:** Integrated volumetric fog and improved cloud impostors.
 
-## Requirements
+### Phase 4: Content & Variety
+- **21+ Building Types:** Including Taverns, Windmills, Watchtowers, and more.
+- **Aging System:** Procedural ruins and weathered material variations.
+- **Populated World:** NPC placement, animal pens, and interactive village props.
 
-- **Unity 6 (6000.3.5f2)** or newer.
-- **Universal Render Pipeline (URP)**.
-- `UnityEditor` namespace -- the tool works inside the Unity Editor.
+### Phase 5: Performance
+- **Unity Jobs & Burst:** Multi-threaded FBM and erosion algorithms.
+- **Texture Atlasing:** Massive reduction in draw calls via automatic material batching.
+- **Smart Caching:** Persistent asset caching to speed up subsequent generations.
 
-## Quick Start (How to Run)
+### Phase 6: Professional Tooling
+- **FBX Export:** Export combined meshes for external processing.
+- **Runtime API:** Generate worlds in Play Mode or via scripts.
+- **Scene Validator:** Automatic detection of overlapping geometry or floating objects.
+- **Unit Tested:** High coverage for core mathematical and random utilities.
 
-1. **Clone or download** this repository.
-2. **Copy** the folder `Assets/AuraLiteWorldGenerator` into your Unity project under `Assets/`.
-3. **Open Unity** and wait for the scripts to compile.
-4. Open the generator window:
-   ```
-   Tools -> Procedural Scenes -> Build AAA Rural World (URP)
-   ```
-5. **Adjust settings** and click **Update Preview Layout** to see the gizmos in your Scene View.
-6. Click **Build AAA Rural World**.
-7. The generated scene is saved to:
-   ```
-   Assets/GeneratedVillageScene/<SceneName>.unity
-   ```
+## Installation
+1. Clone the repository into your `Assets/` folder.
+2. Ensure you are using **Unity 6 (6000.0+)** and **URP 17**.
+3. (Optional) Install `Unity.Burst` and `Unity.Mathematics` for maximum performance.
 
-> **Note:** Large worlds (100+ km^2) can take several minutes to generate. Keep the Editor window open until the progress bar finishes.
-
-## Project Structure
-
-```
-Assets/AuraLiteWorldGenerator/
-|-- Editor/
-|   |-- AuraLiteWorldGeneratorWindow.cs      # Main editor window, orchestrator & Preview logic
-|   |-- WorldLayoutGenerator.cs        # OVERHAULED: Multi-stage placement logic
-|   |-- TerrainGenerator.cs            # Terrain, heightmaps, splatmaps, detail layers
-|   |-- AssetFactory.cs                # Unity 6 URP 17 Volume & Shader setup
-|   |-- LightingAndEnvironment.cs      # Physically Based Sky & Volumetric effects
-|-- Runtime/
-    |-- CameraFacingBillboard.cs       # Billboard component for HLOD cards
-    |-- DistanceChunkActivator.cs      # Runtime distance-based chunk streaming
-```
+## Usage
+- **Editor:** Go to `Tools -> Procedural Scenes -> Build AAA Rural World (URP)`.
+- **Scripting:** 
+  ```csharp
+  var api = gameObject.AddComponent<WorldGeneratorAPI>();
+  await api.GenerateAsync(seed, settings);
+  ```
 
 ## License
-
 Apache 2.0
-
-## Author
-
-Original: [AlexanderNyr/AuraLite-world-generator](https://github.com/AlexanderNyr/AuraLite-world-generator)  
-Unity 6 Update: Agent-led improvements.

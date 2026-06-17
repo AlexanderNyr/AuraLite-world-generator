@@ -69,6 +69,7 @@ namespace AuraLiteWorldGenerator.Editor
     /// Holds all asset references created by the generator (materials, meshes, textures, etc.).
     /// </summary>
     [Serializable]
+    [Obsolete("Use GenerationContext and AssetRegistry instead.")]
     public class BuildContext
     {
         public string rootFolder;

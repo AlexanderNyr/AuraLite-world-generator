@@ -4,6 +4,8 @@ using System.Collections;
 using System.Diagnostics;
 using System.Threading;
 using AuraLiteWorldGenerator.Runtime;
+using AuraLiteWorldGenerator.Editor.Core;
+using AuraLiteWorldGenerator.Editor.Modules;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -206,13 +208,73 @@ namespace AuraLiteWorldGenerator.Editor
             EditorGUILayout.LabelField($"Quality boost: x{_settings.qualityBoost:0.0}");
         }
 
+        private async void BuildWorldAsync()
+        {
+            if (_buildCancellation != null)
+            {
+                _buildCancellation.Cancel();
+                return;
+            }
+
+            _buildCancellation = new CancellationTokenSource();
+            var ct = _buildCancellation.Token;
+            var timer = Stopwatch.StartNew();
+            var reporter = new UnityProgressReporter(WindowTitle);
+
+            try
+            {
+                var services = new ServiceContainer();
+                
+                // Load and register plugins
+                var plugins = PluginLoader.LoadPlugins();
+                foreach (var plugin in plugins)
+                {
+                    plugin.RegisterServices(services);
+                }
+
+                var context = new GenerationContext(_settings.seed, _settings, services, ct);
+
+                pipeline.AddModule(new AssetPreparationModule());
+                pipeline.AddModule(new LayoutGenerationModule());
+                pipeline.AddModule(new ScenePreparationModule());
+                pipeline.AddModule(new TerrainGenerationModule());
+                pipeline.AddModule(new HydrologyModule());
+                pipeline.AddModule(new RoadNetworkModule());
+                pipeline.AddModule(new SettlementModule());
+                pipeline.AddModule(new VegetationModule());
+                pipeline.AddModule(new PropsModule());
+                pipeline.AddModule(new OptimizationModule());
+                pipeline.AddModule(new LightingModule());
+
+                await pipeline.ExecuteAsync(context, reporter, ct);
+
+                timer.Stop();
+                UnityEngine.Debug.Log($"AAA Rural World complete in {timer.Elapsed.TotalSeconds:0.0}s.");
+            }
+            catch (OperationCanceledException)
+            {
+                UnityEngine.Debug.LogWarning("Generation cancelled.");
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogError($"Generation failed: {ex}");
+                EditorUtility.DisplayDialog("Generation Failed", ex.Message, "OK");
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
+                _buildCancellation = null;
+            }
+        }
+
         private void DrawBuildButton()
         {
             EditorGUILayout.Space(10);
             GUI.backgroundColor = new Color(0.78f, 0.92f, 0.78f);
-            if (GUILayout.Button("Build AAA Rural World", GUILayout.Height(36)))
+            string btnLabel = _buildCancellation != null ? "CANCEL GENERATION" : "Build AAA Rural World (URP)";
+            if (GUILayout.Button(btnLabel, GUILayout.Height(45)))
             {
-                BuildScene();
+                BuildWorldAsync();
             }
             GUI.backgroundColor = Color.white;
         }

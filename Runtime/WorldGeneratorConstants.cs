@@ -67,7 +67,14 @@ namespace AuraLiteWorldGenerator.Runtime
         Tavern,
         Stable,
         Granary,
-        Boathouse
+        Boathouse,
+        Inn,
+        Windmill,
+        Watermill,
+        School,
+        Warehouse,
+        Greenhouse,
+        Watchtower
     }
 
     public enum VillageStyle
