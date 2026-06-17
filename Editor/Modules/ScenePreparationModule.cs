@@ -23,7 +23,8 @@ namespace AuraLiteWorldGenerator.Editor.Modules
             ctx.Hierarchy.RoadsRoot = CreateChild(root, "Roads");
             ctx.Hierarchy.VillageRoot = CreateChild(root, "Village");
             ctx.Hierarchy.ForestRoot = CreateChild(root, "ForestFar");
-            ctx.Hierarchy.WaterRoot = ctx.Hierarchy.TerrainRoot; 
+            ctx.Hierarchy.WaterRoot = CreateChild(root, "Water");
+            ctx.Hierarchy.FieldsRoot = CreateChild(root, "Fields"); 
             
             progress.Report("Scene ready", 1.0f);
             return Task.CompletedTask;

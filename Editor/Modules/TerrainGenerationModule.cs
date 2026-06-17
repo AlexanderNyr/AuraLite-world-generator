@@ -34,48 +34,8 @@ namespace AuraLiteWorldGenerator.Editor.Modules
         private Task RunCoroutineAsTask(IEnumerator routine, CancellationToken ct)
         {
             var tcs = new TaskCompletionSource<bool>();
-            EditorCoroutineRunnerWrapper.Run(routine, tcs, ct);
+            EditorCoroutineBridge.Run(routine, tcs, ct);
             return tcs.Task;
-        }
-    }
-
-    // A helper to bridge EditorCoroutineRunner and Tasks
-    internal static class EditorCoroutineRunnerWrapper
-    {
-        public static void Run(IEnumerator routine, TaskCompletionSource<bool> tcs, CancellationToken ct)
-        {
-            EditorCoroutineRunner.Start(RunInternal(routine, tcs, ct));
-        }
-
-        private static IEnumerator RunInternal(IEnumerator routine, TaskCompletionSource<bool> tcs, CancellationToken ct)
-        {
-            while (true)
-            {
-                if (ct.IsCancellationRequested)
-                {
-                    tcs.SetCanceled();
-                    yield break;
-                }
-
-                bool hasNext;
-                try
-                {
-                    hasNext = routine.MoveNext();
-                }
-                catch (Exception ex)
-                {
-                    tcs.SetException(ex);
-                    yield break;
-                }
-
-                if (!hasNext)
-                {
-                    tcs.SetResult(true);
-                    yield break;
-                }
-
-                yield return routine.Current;
-            }
         }
     }
 }

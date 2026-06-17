@@ -52,7 +52,7 @@ namespace AuraLiteWorldGenerator.Editor.Modules
             
             // Note: ForestGenerator.CreateFarForest is a coroutine
             var tcs = new TaskCompletionSource<bool>();
-            EditorCoroutineRunnerWrapper.Run(ForestGenerator.CreateFarForest(oldCtx, grid, ctx.Layout, ctx.Settings, ctx.Hierarchy.ForestRoot.transform, ct), tcs, ct);
+            EditorCoroutineBridge.Run(ForestGenerator.CreateFarForest(oldCtx, grid, ctx.Layout, ctx.Settings, ctx.Hierarchy.ForestRoot.transform, ct), tcs, ct);
             await tcs.Task;
             
             progress.Report("Vegetation complete", 1.0f);

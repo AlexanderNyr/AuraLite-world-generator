@@ -15,7 +15,7 @@ namespace AuraLiteWorldGenerator.Editor.Modules
             progress.Report("Optimizing world", 0.5f);
             var oldCtx = ctx.Assets.Get<BuildContext>("LegacyContext");
             OptimizationSystem.CreateWorldOptimizationSystem(oldCtx, ctx.Layout, ctx.Settings, ctx.Hierarchy.Root, 
-                ctx.Hierarchy.RoadsRoot, ctx.Hierarchy.VillageRoot, null, ctx.Hierarchy.ForestRoot);
+                ctx.Hierarchy.RoadsRoot, ctx.Hierarchy.VillageRoot, ctx.Hierarchy.FieldsRoot, ctx.Hierarchy.ForestRoot);
             progress.Report("Optimization complete", 1.0f);
             return Task.CompletedTask;
         }

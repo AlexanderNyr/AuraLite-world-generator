@@ -21,7 +21,8 @@ namespace AuraLiteWorldGenerator.Editor
             if (root == null)
                 throw new System.ArgumentNullException(nameof(root));
 
-            Dictionary<Material, List<MeshFilter>> groups = GroupFiltersByMaterial(root);
+            var filtersToDestroy = new List<MeshFilter>();
+            Dictionary<Material, List<MeshFilter>> groups = GroupFiltersByMaterial(root, filtersToDestroy);
             if (groups.Count == 0)
                 return;
 
@@ -40,12 +41,9 @@ namespace AuraLiteWorldGenerator.Editor
                 if (filtersToDestroy[i] != null)
                     Object.DestroyImmediate(filtersToDestroy[i].gameObject);
             }
-            filtersToDestroy.Clear();
         }
 
-        private static readonly List<MeshFilter> filtersToDestroy = new List<MeshFilter>();
-
-        private static Dictionary<Material, List<MeshFilter>> GroupFiltersByMaterial(Transform root)
+        private static Dictionary<Material, List<MeshFilter>> GroupFiltersByMaterial(Transform root, List<MeshFilter> outFiltersToDestroy)
         {
             Dictionary<Material, List<MeshFilter>> groups = new Dictionary<Material, List<MeshFilter>>();
             MeshFilter[] filters = root.GetComponentsInChildren<MeshFilter>(true);
@@ -68,7 +66,7 @@ namespace AuraLiteWorldGenerator.Editor
                     groups[mat] = list;
                 }
                 list.Add(filters[i]);
-                filtersToDestroy.Add(filters[i]);
+                outFiltersToDestroy.Add(filters[i]);
             }
 
             return groups;

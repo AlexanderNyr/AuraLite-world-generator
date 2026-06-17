@@ -103,6 +103,55 @@ namespace AuraLiteWorldGenerator.Editor
                     spec.garden = false;
                     spec.annex = false;
                     break;
+                case BuildingKind.Inn:
+                    spec.footprint = new Vector2(random.Range(12.5f, 15.0f), random.Range(10.0f, 12.0f));
+                    spec.height = random.Range(6.0f, 7.5f);
+                    spec.fenced = false;
+                    spec.garden = false;
+                    spec.annex = true;
+                    break;
+                case BuildingKind.Windmill:
+                    spec.footprint = new Vector2(11.0f, 11.0f);
+                    spec.height = random.Range(8.5f, 9.5f);
+                    spec.fenced = false;
+                    spec.garden = false;
+                    spec.annex = false;
+                    break;
+                case BuildingKind.Watermill:
+                    spec.footprint = new Vector2(12.0f, 9.0f);
+                    spec.height = random.Range(5.5f, 6.5f);
+                    spec.fenced = false;
+                    spec.garden = false;
+                    spec.annex = true;
+                    break;
+                case BuildingKind.School:
+                    spec.footprint = new Vector2(14.0f, 8.5f);
+                    spec.height = random.Range(5.0f, 6.0f);
+                    spec.fenced = true;
+                    spec.garden = false;
+                    spec.annex = false;
+                    break;
+                case BuildingKind.Warehouse:
+                    spec.footprint = new Vector2(random.Range(14.0f, 18.0f), random.Range(10.0f, 13.0f));
+                    spec.height = random.Range(5.5f, 7.0f);
+                    spec.fenced = false;
+                    spec.garden = false;
+                    spec.annex = true;
+                    break;
+                case BuildingKind.Greenhouse:
+                    spec.footprint = new Vector2(random.Range(9.0f, 12.0f), random.Range(6.0f, 8.0f));
+                    spec.height = random.Range(4.0f, 4.5f);
+                    spec.fenced = true;
+                    spec.garden = true;
+                    spec.annex = false;
+                    break;
+                case BuildingKind.Watchtower:
+                    spec.footprint = new Vector2(8.0f, 8.0f);
+                    spec.height = random.Range(10.0f, 12.0f);
+                    spec.fenced = false;
+                    spec.garden = false;
+                    spec.annex = false;
+                    break;
                 default:
                     spec.footprint = new Vector2(16f, 12f);
                     spec.height = 7.2f;

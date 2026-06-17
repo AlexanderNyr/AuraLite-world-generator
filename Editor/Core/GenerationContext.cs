@@ -29,6 +29,21 @@ namespace AuraLiteWorldGenerator.Editor.Core
         }
     }
 
+    public class AssetRegistryAssetProvider : IAssetProvider
+    {
+        private AssetRegistry _registry;
+
+        public AssetRegistryAssetProvider(AssetRegistry registry)
+        {
+            _registry = registry;
+        }
+
+        public Material GetMaterial(string key) => _registry.Get<Material>(key);
+        public Mesh GetMesh(string key) => _registry.Get<Mesh>(key);
+        public Texture2D GetTexture(string key) => _registry.Get<Texture2D>(key);
+        public T GetAsset<T>(string key) where T : Object => _registry.Get<T>(key);
+    }
+    
     public class AssetRegistry
     {
         private Dictionary<string, Object> _assets = new Dictionary<string, Object>();
@@ -49,5 +64,6 @@ namespace AuraLiteWorldGenerator.Editor.Core
         public GameObject RoadsRoot { get; set; }
         public GameObject ForestRoot { get; set; }
         public GameObject WaterRoot { get; set; }
+        public GameObject FieldsRoot { get; set; }
     }
 }

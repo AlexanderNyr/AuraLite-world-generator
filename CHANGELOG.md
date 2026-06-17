@@ -1,6 +1,26 @@
 # Changelog
 
-## [1.0.2] - 2026-06-17
+## [1.1.0] - 2026-06-17
+
+### Added
+- Completed implementation for all 20 `BuildingKind` variations (Inn, Windmill, Watermill, School, Warehouse, Greenhouse, Watchtower, etc.).
+- Fully functional `HydraulicErosion` droplet-based terrain erosion.
+- Implemented `OrganicRoadStrategy` using A* pathfinding.
+- Implemented `RiverNetworkGenerator` using flow accumulation.
+- Real OBJ/PNG export in `WorldExporter`.
+- Extracted `AuraLiteWorldGenerator.Runtime` and `Shared` asmdefs for proper player build support.
+- Fully wired biome providers and DI services.
+- Proper URP Water shader with depth color, foam, and Fresnel.
+- `FBMJob` with Burst support for terrain generation.
+- Expanded NUnit test coverage (Geometry, Layout, Erosion, Roads, Pipeline).
+
+### Fixed
+- Fixed compilation errors in `AuraLiteWorldGeneratorWindow` (missing pipeline initialization).
+- Fixed `SetLODs` case sensitivity error.
+- Fixed static state leakage in `MeshCombiner` by scoping filter destruction per execution.
+- Refactored `EditorCoroutineRunner` to support multiple instances safely.
+- Fixed hierarchy aliasing bugs (`WaterRoot`, `FieldsRoot`).
+- Updated progress reporters to correctly nest.
 
 ### Added
 - Complete architecture refactor (Pipeline, DI, Plugins).

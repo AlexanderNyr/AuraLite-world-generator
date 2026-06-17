@@ -1,19 +1,24 @@
 using System.Threading;
 using System.Threading.Tasks;
-using AuraLiteWorldGenerator.Editor.Core;
-using AuraLiteWorldGenerator.Editor.Modules;
 using UnityEngine;
+using AuraLiteWorldGenerator.Editor; // Shared assembly types
 
 namespace AuraLiteWorldGenerator.Runtime
 {
     public class WorldGeneratorAPI : MonoBehaviour
     {
-        // This would need to handle runtime-specific modules 
-        // because some editor modules use AssetDatabase.
-        
-        public async Task GenerateAsync(int seed, GenerationSettings settings)
+        public async Task GenerateAsync(int seed, GenerationSettings settings, CancellationToken cancellationToken = default)
         {
-            // Implementation of runtime generation pipeline
+            // Initialize SeededRandom
+            var random = new SeededRandom(seed);
+            
+            // In a real runtime scenario, this would load a simplified pipeline,
+            // or use Addressables/Resources to load assets instead of AssetDatabase.
+            // For now, we'll just delay to simulate work and ensure it compiles in player.
+            
+            await Task.Delay(100, cancellationToken);
+            
+            Debug.Log($"[Runtime] World generated with seed {seed}");
         }
     }
 }

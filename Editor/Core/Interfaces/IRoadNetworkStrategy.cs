@@ -7,7 +7,10 @@ namespace AuraLiteWorldGenerator.Editor.Core
     {
         public Vector3 Bounds;
         public int Seed;
-        // ... other parameters
+        public Vector2Int GridSize;
+        public float[,] CostMap;
+        public Vector2Int Start;
+        public Vector2Int End;
     }
 
     public class RoadNetwork

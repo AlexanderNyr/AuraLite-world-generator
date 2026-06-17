@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Threading;
 using AuraLiteWorldGenerator.Runtime;
 using AuraLiteWorldGenerator.Editor.Core;
+using AuraLiteWorldGenerator.Editor.Core.Logging;
 using AuraLiteWorldGenerator.Editor.Modules;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -224,6 +225,7 @@ namespace AuraLiteWorldGenerator.Editor
             try
             {
                 var services = new ServiceContainer();
+                var pipeline = new WorldGenerationPipeline(services);
                 
                 // Load and register plugins
                 var plugins = PluginLoader.LoadPlugins();
@@ -233,6 +235,17 @@ namespace AuraLiteWorldGenerator.Editor
                 }
 
                 var context = new GenerationContext(_settings.seed, _settings, services, ct);
+                
+                services.RegisterInstance<ILogger>(new UnityLogger());
+                
+                var biomeProvider = new Biomes.DefaultBiomeProvider();
+                biomeProvider.Initialize(_settings.seed);
+                
+                services.Register<ITerrainEroder, Terrain.Erosion.HydraulicErosion>();
+                services.Register<IRoadNetworkStrategy, Roads.OrganicRoadStrategy>();
+                services.RegisterInstance<IAssetProvider>(new AssetRegistryAssetProvider(context.Assets));
+                services.RegisterInstance<IBiomeProvider>(biomeProvider);
+                services.Register<IBuildingProvider, DefaultBuildingProvider>();
 
                 pipeline.AddModule(new AssetPreparationModule());
                 pipeline.AddModule(new LayoutGenerationModule());

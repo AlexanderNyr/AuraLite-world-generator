@@ -6,37 +6,31 @@ using UnityEngine;
 
 namespace AuraLiteWorldGenerator.Editor
 {
-    /// <summary>
-    /// Minimal editor coroutine runner backed by EditorApplication.update.
-    /// Supports nested coroutines (yield return another IEnumerator) so the Unity Editor
-    /// stays responsive during long procedural generation.
-    /// </summary>
-    public static class EditorCoroutineRunner
+    public class EditorCoroutine
     {
-        private static readonly Stack<IEnumerator> _stack = new Stack<IEnumerator>();
-        private static bool _isRunning;
+        private Stack<IEnumerator> _stack = new Stack<IEnumerator>();
+        public bool IsRunning { get; private set; }
 
-        public static bool IsRunning => _isRunning;
-
-        public static void Start(IEnumerator routine)
+        public EditorCoroutine(IEnumerator routine)
         {
-            if (_isRunning)
-                throw new InvalidOperationException("EditorCoroutineRunner is already running a coroutine.");
-            _stack.Clear();
-            _stack.Push(routine ?? throw new ArgumentNullException(nameof(routine)));
-            _isRunning = true;
+            if (routine == null) throw new ArgumentNullException(nameof(routine));
+            _stack.Push(routine);
+        }
+
+        public void Start()
+        {
+            IsRunning = true;
             EditorApplication.update += OnUpdate;
         }
 
-        public static void Stop()
+        public void Stop()
         {
             EditorApplication.update -= OnUpdate;
             _stack.Clear();
-            _isRunning = false;
-            EditorUtility.ClearProgressBar();
+            IsRunning = false;
         }
 
-        private static void OnUpdate()
+        private void OnUpdate()
         {
             if (_stack.Count == 0)
             {
@@ -77,6 +71,38 @@ namespace AuraLiteWorldGenerator.Editor
             {
                 _stack.Push(nested);
             }
+        }
+    }
+
+    public static class EditorCoroutineRunner
+    {
+        private static EditorCoroutine _legacyCoroutine;
+
+        public static bool IsRunning => _legacyCoroutine != null && _legacyCoroutine.IsRunning;
+
+        public static void Start(IEnumerator routine)
+        {
+            if (IsRunning)
+                throw new InvalidOperationException("EditorCoroutineRunner legacy instance is already running.");
+            _legacyCoroutine = new EditorCoroutine(routine);
+            _legacyCoroutine.Start();
+        }
+
+        public static void Stop()
+        {
+            if (_legacyCoroutine != null)
+            {
+                _legacyCoroutine.Stop();
+                _legacyCoroutine = null;
+            }
+            EditorUtility.ClearProgressBar();
+        }
+        
+        public static EditorCoroutine StartNew(IEnumerator routine)
+        {
+            var coroutine = new EditorCoroutine(routine);
+            coroutine.Start();
+            return coroutine;
         }
     }
 }

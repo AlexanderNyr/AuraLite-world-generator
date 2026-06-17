@@ -15,13 +15,13 @@ namespace AuraLiteWorldGenerator.Editor.Modules
             var oldCtx = ctx.Assets.Get<BuildContext>("LegacyContext");
             var grid = ctx.Assets.Get<TerrainGrid>("TerrainGrid");
             
-            // Reusing existing roots or creating a new one if needed
-            var parent = ctx.Hierarchy.VillageRoot.transform; // Simplified
+            // Using correct roots
+            var fieldsParent = ctx.Hierarchy.FieldsRoot.transform;
             
-            FieldPropsGenerator.CreateFieldBoundaryProps(oldCtx, grid, ctx.Layout, ctx.Settings, parent);
-            FieldPropsGenerator.CreateFieldStonePiles(oldCtx, grid, ctx.Layout, ctx.Settings, parent);
-            WaterGenerator.CreateWaterVegetation(oldCtx, grid, ctx.Layout, ctx.Settings, parent);
-            FieldPropsGenerator.CreateFieldProps(oldCtx, grid, ctx.Layout, ctx.Settings, parent);
+            FieldPropsGenerator.CreateFieldBoundaryProps(oldCtx, grid, ctx.Layout, ctx.Settings, fieldsParent);
+            FieldPropsGenerator.CreateFieldStonePiles(oldCtx, grid, ctx.Layout, ctx.Settings, fieldsParent);
+            WaterGenerator.CreateWaterVegetation(oldCtx, grid, ctx.Layout, ctx.Settings, fieldsParent);
+            FieldPropsGenerator.CreateFieldProps(oldCtx, grid, ctx.Layout, ctx.Settings, fieldsParent);
             
             progress.Report("Props added", 1.0f);
             return Task.CompletedTask;

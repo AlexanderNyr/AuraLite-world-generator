@@ -4,6 +4,7 @@ namespace AuraLiteWorldGenerator.Editor.Core
     {
         public float Strength;
         public int Iterations;
+        public int Seed;
     }
 
     public interface ITerrainEroder

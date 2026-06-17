@@ -143,6 +143,44 @@ namespace AuraLiteWorldGenerator.Editor
                     p.wall = p.russian ? ctx.logWallMat : ctx.wallWarmMat;
                     p.roof = ctx.roofDarkMat;
                     break;
+                case BuildingKind.Inn:
+                    p.width *= 1.2f;
+                    p.depth *= 1.1f;
+                    p.height *= 1.1f;
+                    p.wall = p.russian ? ctx.logWallMat : ctx.wallCreamMat;
+                    break;
+                case BuildingKind.Windmill:
+                    p.width *= 1.0f;
+                    p.depth *= 1.0f;
+                    p.height *= 1.4f;
+                    p.wall = p.russian ? ctx.logWallMat : ctx.wallWarmMat;
+                    p.roof = ctx.roofDarkMat;
+                    break;
+                case BuildingKind.Watermill:
+                    p.wall = p.russian ? ctx.logWallMat : ctx.wallWarmMat;
+                    break;
+                case BuildingKind.School:
+                    p.width *= 1.3f;
+                    p.wall = p.russian ? ctx.logWallMat : ctx.wallCreamMat;
+                    break;
+                case BuildingKind.Warehouse:
+                    p.width *= 1.4f;
+                    p.depth *= 1.2f;
+                    p.height *= 1.1f;
+                    p.wall = p.russian ? ctx.logWallMat : ctx.wallWarmMat;
+                    p.roof = ctx.roofDarkMat;
+                    break;
+                case BuildingKind.Greenhouse:
+                    p.wall = ctx.glassMat ?? ctx.wallCreamMat;
+                    p.roof = ctx.glassMat ?? ctx.roofDarkMat;
+                    break;
+                case BuildingKind.Watchtower:
+                    p.width *= 0.8f;
+                    p.depth *= 0.8f;
+                    p.height *= 1.8f;
+                    p.wall = p.russian ? ctx.logWallMat : ctx.wallWarmMat;
+                    p.roof = ctx.roofDarkMat;
+                    break;
             }
         }
 
@@ -273,7 +311,143 @@ namespace AuraLiteWorldGenerator.Editor
                 case BuildingKind.Stable: CreateStableDetails(ctx, root, p); break;
                 case BuildingKind.Granary: CreateGranaryDetails(ctx, root, p); break;
                 case BuildingKind.Boathouse: CreateBoathouseDetails(ctx, root, p); break;
+                case BuildingKind.Inn: CreateInnDetails(ctx, root, p); break;
+                case BuildingKind.Windmill: CreateWindmillDetails(ctx, root, p); break;
+                case BuildingKind.Watermill: CreateWatermillDetails(ctx, root, p); break;
+                case BuildingKind.School: CreateSchoolDetails(ctx, root, p); break;
+                case BuildingKind.Warehouse: CreateWarehouseDetails(ctx, root, p); break;
+                case BuildingKind.Greenhouse: CreateGreenhouseDetails(ctx, root, p); break;
+                case BuildingKind.Watchtower: CreateWatchtowerDetails(ctx, root, p); break;
             }
+        }
+
+        private static void CreateInnDetails(BuildContext ctx, Transform root, BuildingProfile p)
+        {
+            // Sign
+            GameObject sign = new GameObject("InnSign");
+            sign.transform.SetParent(root, false);
+            sign.transform.localPosition = new Vector3(-p.width * 0.45f, p.height * 0.65f, p.depth * 0.55f);
+            GameObjectBuilder.CreateCubeChild(sign.transform, "Arm", Vector3.zero, new Vector3(0.12f, 1.0f, 0.12f), ctx.timberMat);
+            GameObjectBuilder.CreateCubeChild(sign.transform, "Board", new Vector3(0.4f, -0.1f, 0f), new Vector3(0.6f, 0.5f, 0.1f), ctx.timberMat);
+
+            // Barrels
+            GameObjectBuilder.CreateCylinderChild(root, "Barrel1", new Vector3(p.width * 0.3f, 0.4f, p.depth * 0.55f), Quaternion.Euler(0, 15, 0), new Vector3(0.6f, 0.4f, 0.6f), ctx.timberMat);
+            GameObjectBuilder.CreateCylinderChild(root, "Barrel2", new Vector3(p.width * 0.45f, 0.4f, p.depth * 0.55f), Quaternion.Euler(0, -10, 0), new Vector3(0.6f, 0.4f, 0.6f), ctx.timberMat);
+            
+            // Canopy over entrance
+            GameObjectBuilder.CreateCubeChild(root, "Canopy", new Vector3(0f, p.height * 0.5f, p.depth * 0.55f), new Vector3(p.width * 0.4f, 0.1f, 1.0f), ctx.roofDarkMat);
+        }
+
+        private static void CreateWindmillDetails(BuildContext ctx, Transform root, BuildingProfile p)
+        {
+            // Tower base is replaced by body, we add cone roof and sails
+            if (ctx.coneMesh != null)
+            {
+                var r2 = root.Find("Roof");
+                if (r2 != null) GameObject.DestroyImmediate(r2.gameObject);
+                
+                GameObject cone = new GameObject("ConeRoof");
+                cone.transform.SetParent(root, false);
+                cone.transform.localPosition = new Vector3(0f, p.height + 0.5f, 0f);
+                cone.transform.localScale = new Vector3(p.width * 1.2f, 2.0f, p.depth * 1.2f);
+                MeshFilter mf = cone.AddComponent<MeshFilter>();
+                mf.sharedMesh = ctx.coneMesh;
+                cone.AddComponent<MeshRenderer>().sharedMaterial = p.roof;
+            }
+
+            GameObject sailsNode = new GameObject("Sails");
+            sailsNode.transform.SetParent(root, false);
+            sailsNode.transform.localPosition = new Vector3(0f, p.height * 0.7f, p.depth * 0.55f);
+            
+            // Central hub
+            GameObjectBuilder.CreateCubeChild(sailsNode.transform, "Hub", Vector3.zero, new Vector3(0.6f, 0.6f, 0.8f), ctx.timberMat);
+            
+            // 4 sails
+            for (int i = 0; i < 4; i++)
+            {
+                float angle = i * 90f;
+                GameObject sail = new GameObject($"Sail_{i}");
+                sail.transform.SetParent(sailsNode.transform, false);
+                sail.transform.localRotation = Quaternion.Euler(0f, 0f, angle);
+                // Arm
+                GameObjectBuilder.CreateCubeChild(sail.transform, "Arm", new Vector3(0f, 2.0f, 0.2f), new Vector3(0.15f, 4.0f, 0.15f), ctx.timberMat);
+                // Canvas
+                GameObjectBuilder.CreateCubeChild(sail.transform, "Canvas", new Vector3(0.4f, 2.5f, 0.25f), new Vector3(0.8f, 3.0f, 0.05f), ctx.wallCreamMat);
+            }
+        }
+
+        private static void CreateWatermillDetails(BuildContext ctx, Transform root, BuildingProfile p)
+        {
+            GameObject wheelNode = new GameObject("WaterWheel");
+            wheelNode.transform.SetParent(root, false);
+            // Placed to the side
+            wheelNode.transform.localPosition = new Vector3(-p.width * 0.55f, 1.5f, 0f);
+            
+            // Hub
+            GameObjectBuilder.CreateCylinderChild(wheelNode.transform, "Hub", Vector3.zero, Quaternion.Euler(0, 0, 90), new Vector3(0.8f, 1.0f, 0.8f), ctx.timberMat);
+            
+            // Blades
+            for (int i = 0; i < 8; i++)
+            {
+                float angle = i * 45f;
+                GameObject blade = new GameObject($"Blade_{i}");
+                blade.transform.SetParent(wheelNode.transform, false);
+                blade.transform.localRotation = Quaternion.Euler(angle, 0f, 0f);
+                GameObjectBuilder.CreateCubeChild(blade.transform, "Board", new Vector3(0f, 0f, 1.5f), new Vector3(0.8f, 0.1f, 1.0f), ctx.timberMat);
+            }
+            
+            // Trough
+            GameObjectBuilder.CreateCubeChild(root, "Trough", new Vector3(-p.width * 0.55f, 3.0f, -p.depth * 0.6f), new Vector3(0.6f, 0.4f, p.depth), ctx.timberMat);
+        }
+
+        private static void CreateSchoolDetails(BuildContext ctx, Transform root, BuildingProfile p)
+        {
+            // Porch
+            GameObjectBuilder.CreateCubeChild(root, "Porch", new Vector3(0f, 0.4f, p.depth * 0.6f), new Vector3(p.width * 0.6f, 0.8f, 1.2f), ctx.timberMat);
+            // Bell on roof
+            GameObject bellTower = new GameObject("BellTower");
+            bellTower.transform.SetParent(root, false);
+            bellTower.transform.localPosition = new Vector3(0f, p.height + p.roofHeight + 0.2f, p.depth * 0.4f);
+            GameObjectBuilder.CreateCubeChild(bellTower.transform, "Pillar", Vector3.zero, new Vector3(0.6f, 1.0f, 0.6f), ctx.timberMat);
+            GameObjectBuilder.CreateCubeChild(bellTower.transform, "Bell", new Vector3(0f, 0f, 0.4f), new Vector3(0.4f, 0.5f, 0.4f), ctx.copperRoofMat ?? ctx.timberMat);
+            GameObjectBuilder.CreateCubeChild(bellTower.transform, "Roof", new Vector3(0f, 0.6f, 0f), new Vector3(0.8f, 0.2f, 0.8f), p.roof);
+        }
+
+        private static void CreateWarehouseDetails(BuildContext ctx, Transform root, BuildingProfile p)
+        {
+            // Large doors
+            GameObjectBuilder.CreateCubeChild(root, "LargeDoor", new Vector3(0f, p.height * 0.35f, p.depth * 0.51f), new Vector3(3.0f, p.height * 0.7f, 0.2f), ctx.timberMat);
+            // Side extension
+            GameObjectBuilder.CreateCubeChild(root, "Extension", new Vector3(p.width * 0.55f, p.height * 0.4f, 0f), new Vector3(2.0f, p.height * 0.8f, p.depth * 0.6f), p.wall);
+            GameObjectBuilder.CreateCubeChild(root, "ExtensionRoof", new Vector3(p.width * 0.55f, p.height * 0.85f, 0f), new Vector3(2.2f, 0.2f, p.depth * 0.65f), p.roof);
+            
+            // Crates
+            GameObjectBuilder.CreateCubeChild(root, "Crate1", new Vector3(-p.width * 0.3f, 0.5f, p.depth * 0.6f), new Vector3(1.0f, 1.0f, 1.0f), ctx.timberMat);
+            GameObjectBuilder.CreateCubeChild(root, "Crate2", new Vector3(-p.width * 0.3f, 1.5f, p.depth * 0.6f), new Vector3(0.8f, 0.8f, 0.8f), ctx.timberMat);
+        }
+
+        private static void CreateGreenhouseDetails(BuildContext ctx, Transform root, BuildingProfile p)
+        {
+            // Internal beds
+            GameObjectBuilder.CreateCubeChild(root, "Bed1", new Vector3(-p.width * 0.25f, 0.3f, 0f), new Vector3(p.width * 0.3f, 0.6f, p.depth * 0.8f), ctx.dirtMat ?? ctx.timberMat);
+            GameObjectBuilder.CreateCubeChild(root, "Bed2", new Vector3(p.width * 0.25f, 0.3f, 0f), new Vector3(p.width * 0.3f, 0.6f, p.depth * 0.8f), ctx.dirtMat ?? ctx.timberMat);
+        }
+
+        private static void CreateWatchtowerDetails(BuildContext ctx, Transform root, BuildingProfile p)
+        {
+            // Platform
+            GameObjectBuilder.CreateCubeChild(root, "Platform", new Vector3(0f, p.height, 0f), new Vector3(p.width * 1.2f, 0.4f, p.depth * 1.2f), ctx.timberMat);
+            
+            // Battlements
+            for (int x = -1; x <= 1; x += 2)
+            {
+                GameObjectBuilder.CreateCubeChild(root, $"BattlementX{x}", new Vector3(x * p.width * 0.55f, p.height + 0.6f, 0f), new Vector3(0.2f, 1.2f, p.depth * 1.2f), p.wall);
+                GameObjectBuilder.CreateCubeChild(root, $"BattlementZ{x}", new Vector3(0f, p.height + 0.6f, x * p.depth * 0.55f), new Vector3(p.width * 1.2f, 1.2f, 0.2f), p.wall);
+            }
+            
+            // Lantern
+            GameObjectBuilder.CreateCubeChild(root, "Lantern", new Vector3(0f, p.height + 1.5f, 0f), new Vector3(0.8f, 1.5f, 0.8f), ctx.glassMat ?? ctx.wallCreamMat);
+            GameObjectBuilder.CreateCubeChild(root, "LanternRoof", new Vector3(0f, p.height + 2.4f, 0f), new Vector3(1.2f, 0.3f, 1.2f), p.roof);
         }
 
         private static void CreateWorkshopSign(BuildContext ctx, Transform root, BuildingProfile p)
@@ -524,7 +698,7 @@ namespace AuraLiteWorldGenerator.Editor
             }
 
             LODGroup group = root.AddComponent<LODGroup>();
-            group.setLODs(lods);
+            group.SetLODs(lods);
             group.RecalculateBounds();
         }
 
