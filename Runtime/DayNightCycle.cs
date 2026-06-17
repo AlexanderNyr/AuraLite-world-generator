@@ -174,7 +174,7 @@ namespace AuraLiteWorldGenerator.Runtime
             _lampGlows.Clear();
             _lampLights.Clear();
 
-            var allRenderers = FindObjectsOfType<MeshRenderer>();
+            var allRenderers = FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None);
             foreach (var mr in allRenderers)
             {
                 if (mr.name.StartsWith("LampGlow"))
@@ -208,7 +208,7 @@ namespace AuraLiteWorldGenerator.Runtime
         {
             if (globalVolume == null)
             {
-                globalVolume = FindObjectOfType<Volume>();
+                globalVolume = FindAnyObjectByType<Volume>();
             }
 
             if (globalVolume != null && globalVolume.profile != null)
@@ -396,7 +396,7 @@ namespace AuraLiteWorldGenerator.Runtime
                 if (timeOfDay > 5f && timeOfDay < 8f)
                     goldenHour = 1f - Mathf.Abs(timeOfDay - 6.5f) / 1.5f;
 
-                _colorAdjustments.satificationOverrideState = true;
+                _colorAdjustments.saturation.overrideState = true;
                 _colorAdjustments.saturation.value = saturation + goldenHour * 15f;
             }
         }

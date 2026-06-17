@@ -25,7 +25,7 @@ namespace AuraLiteWorldGenerator.Editor.Modules
 
             // Find the sun created by LightingModule
             Light sun = null;
-            var lights = Object.FindObjectsOfType<Light>();
+            var lights = Object.FindObjectsByType<Light>(FindObjectsSortMode.None);
             foreach (var l in lights)
             {
                 if (l.type == LightType.Directional && l.intensity > 0.5f)
@@ -53,7 +53,7 @@ namespace AuraLiteWorldGenerator.Editor.Modules
             dayNight.timeOfDay = 10f; // Start at 10:00 AM
 
             // Find global volume for color grading
-            var volume = Object.FindObjectOfType<UnityEngine.Rendering.Volume>();
+            var volume = Object.FindAnyObjectByType<UnityEngine.Rendering.Volume>();
             if (volume != null)
             {
                 dayNight.globalVolume = volume;

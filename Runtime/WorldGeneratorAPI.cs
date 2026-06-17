@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -137,13 +138,13 @@ namespace AuraLiteWorldGenerator.Runtime
 
         private void SetupRuntimeComponents()
         {
-            if (FindObjectOfType<DayNightCycle>() == null)
+            if (FindAnyObjectByType<DayNightCycle>() == null)
             {
                 var dnGO = new GameObject("DayNightCycle");
                 dnGO.AddComponent<DayNightCycle>();
             }
 
-            if (FindObjectOfType<WeatherSystem>() == null)
+            if (FindAnyObjectByType<WeatherSystem>() == null)
             {
                 var wsGO = new GameObject("WeatherSystem");
                 wsGO.AddComponent<WeatherSystem>();
