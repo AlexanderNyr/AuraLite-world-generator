@@ -147,7 +147,7 @@ namespace AuraLiteWorldGenerator.Editor
 
             int tx = Mathf.Clamp(Mathf.FloorToInt(worldPos.x / grid.tileSize), 0, grid.tileCount - 1);
             int tz = Mathf.Clamp(Mathf.FloorToInt(worldPos.z / grid.tileSize), 0, grid.tileCount - 1);
-            Terrain terrain = grid.terrains[tx, tz];
+            UnityEngine.Terrain terrain = grid.terrains[tx, tz];
             return terrain != null ? terrain.SampleHeight(worldPos) : 0f;
         }
 

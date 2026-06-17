@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // 'BuildContext' is obsolete: 'Use GenerationContext and AssetRegistry instead.'
 using System;
 using System.Collections.Generic;
 using AuraLiteWorldGenerator.Runtime;
@@ -62,7 +63,10 @@ namespace AuraLiteWorldGenerator.Editor
     {
         public float tileSize;
         public int tileCount;
-        public Terrain[,] terrains;
+        // Use fully-qualified UnityEngine.Terrain to avoid collision with the
+        // inferred AuraLiteWorldGenerator.Editor.Terrain namespace (which exists
+        // by virtue of AuraLiteWorldGenerator.Editor.Terrain.Erosion being a sibling namespace).
+        public UnityEngine.Terrain[,] terrains;
     }
 
     /// <summary>

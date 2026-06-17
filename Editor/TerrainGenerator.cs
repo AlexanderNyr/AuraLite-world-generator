@@ -1,8 +1,10 @@
+#pragma warning disable CS0618 // 'BuildContext' is obsolete: 'Use GenerationContext and AssetRegistry instead.'
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using AuraLiteWorldGenerator.Editor.Core;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -21,7 +23,7 @@ namespace AuraLiteWorldGenerator.Editor
             {
                 tileCount = layout.tileCount,
                 tileSize = layout.tileSizeMeters,
-                terrains = new Terrain[layout.tileCount, layout.tileCount]
+                terrains = new UnityEngine.Terrain[layout.tileCount, layout.tileCount]
             };
 
             HouseSpatialCache houseCache = layout.houseCache ?? new HouseSpatialCache(layout);
@@ -82,12 +84,12 @@ namespace AuraLiteWorldGenerator.Editor
                     AssetFactory.DeleteExistingAsset<TerrainData>(tdPath);
                     AssetDatabase.CreateAsset(td, tdPath);
 
-                    GameObject terrainGO = Terrain.CreateTerrainGameObject(td);
+                    GameObject terrainGO = UnityEngine.Terrain.CreateTerrainGameObject(td);
                     terrainGO.name = $"Terrain_{x}_{z}";
                     terrainGO.transform.SetParent(parent);
                     terrainGO.transform.position = new Vector3(x * layout.tileSizeMeters, 0f, z * layout.tileSizeMeters);
 
-                    Terrain terrain = terrainGO.GetComponent<Terrain>();
+                    UnityEngine.Terrain terrain = terrainGO.GetComponent<UnityEngine.Terrain>();
                     terrain.drawInstanced = true;
                     // Pixel error can go very low for extreme quality
                     terrain.heightmapPixelError = Mathf.Lerp(3.5f, 0.5f, Mathf.InverseLerp(1f, 50f, settings.qualityBoost));
@@ -114,10 +116,10 @@ namespace AuraLiteWorldGenerator.Editor
             {
                 for (int x = 0; x < layout.tileCount; x++)
                 {
-                    Terrain left = x > 0 ? grid.terrains[x - 1, z] : null;
-                    Terrain right = x < layout.tileCount - 1 ? grid.terrains[x + 1, z] : null;
-                    Terrain top = z > 0 ? grid.terrains[x, z - 1] : null;
-                    Terrain bottom = z < layout.tileCount - 1 ? grid.terrains[x, z + 1] : null;
+                    UnityEngine.Terrain left = x > 0 ? grid.terrains[x - 1, z] : null;
+                    UnityEngine.Terrain right = x < layout.tileCount - 1 ? grid.terrains[x + 1, z] : null;
+                    UnityEngine.Terrain top = z > 0 ? grid.terrains[x, z - 1] : null;
+                    UnityEngine.Terrain bottom = z < layout.tileCount - 1 ? grid.terrains[x, z + 1] : null;
                     grid.terrains[x, z].SetNeighbors(left, top, right, bottom);
                 }
             }
@@ -275,7 +277,7 @@ namespace AuraLiteWorldGenerator.Editor
                 for (int tx = 0; tx < grid.tileCount; tx++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    Terrain terrain = grid.terrains[tx, tz];
+                    UnityEngine.Terrain terrain = grid.terrains[tx, tz];
                     if (terrain == null) continue;
                     TerrainData td = terrain.terrainData;
                     int w = td.alphamapWidth;
@@ -371,7 +373,7 @@ namespace AuraLiteWorldGenerator.Editor
                 for (int tx = 0; tx < grid.tileCount; tx++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    Terrain terrain = grid.terrains[tx, tz];
+                    UnityEngine.Terrain terrain = grid.terrains[tx, tz];
                     if (terrain == null) continue;
                     TerrainData td = terrain.terrainData;
                     int res = td.detailWidth;

@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AuraLiteWorldGenerator.Editor.Core.Logging;
+using UnityEngine;
+using ILogger = AuraLiteWorldGenerator.Editor.Core.Logging.ILogger;
 
 namespace AuraLiteWorldGenerator.Editor.Core
 {

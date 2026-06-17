@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+#pragma warning disable CS0618 // 'BuildContext' is obsolete: 'Use GenerationContext and AssetRegistry instead.'
 using System;
 using System.Collections;
 using System.Diagnostics;
@@ -236,7 +237,7 @@ namespace AuraLiteWorldGenerator.Editor
 
                 var context = new GenerationContext(_settings.seed, _settings, services, ct);
                 
-                services.RegisterInstance<ILogger>(new UnityLogger());
+                services.RegisterInstance<AuraLiteWorldGenerator.Editor.Core.Logging.ILogger>(new AuraLiteWorldGenerator.Editor.Core.Logging.UnityLogger());
                 
                 var biomeProvider = new Biomes.DefaultBiomeProvider();
                 biomeProvider.Initialize(_settings.seed);

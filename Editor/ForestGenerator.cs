@@ -1,8 +1,10 @@
+#pragma warning disable CS0618 // 'BuildContext' is obsolete: 'Use GenerationContext and AssetRegistry instead.'
 using System.Collections;
 using System.Threading;
+using AuraLiteWorldGenerator.Editor.Biomes;
+using AuraLiteWorldGenerator.Editor.Core;
 using UnityEngine;
 using UnityEngine.Rendering;
-using AuraLiteWorldGenerator.Editor.Biomes;
 
 namespace AuraLiteWorldGenerator.Editor
 {

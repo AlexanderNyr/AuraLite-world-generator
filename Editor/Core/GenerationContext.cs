@@ -43,16 +43,33 @@ namespace AuraLiteWorldGenerator.Editor.Core
         public Texture2D GetTexture(string key) => _registry.Get<Texture2D>(key);
         public T GetAsset<T>(string key) where T : Object => _registry.Get<T>(key);
     }
-    
+
+    /// <summary>
+    /// Type-erased key/value store. Used to carry legacy data (BuildContext,
+    /// TerrainGrid, raw strings, etc.) alongside UnityEngine.Object assets.
+    /// Generic Get&lt;T&gt; uses pattern-match casting instead of a constraint so
+    /// non-Unity types can be retrieved as well.
+    /// </summary>
     public class AssetRegistry
     {
-        private Dictionary<string, Object> _assets = new Dictionary<string, Object>();
+        private Dictionary<string, object> _assets = new Dictionary<string, object>();
 
-        public void Register(string key, Object asset) => _assets[key] = asset;
-        public T Get<T>(string key) where T : Object
+        public void Register(string key, object asset) => _assets[key] = asset;
+        public T Get<T>(string key)
         {
-            if (_assets.TryGetValue(key, out var asset)) return asset as T;
-            return null;
+            if (_assets.TryGetValue(key, out var asset) && asset is T typed)
+                return typed;
+            return default(T);
+        }
+        public bool TryGet<T>(string key, out T value)
+        {
+            if (_assets.TryGetValue(key, out var asset) && asset is T typed)
+            {
+                value = typed;
+                return true;
+            }
+            value = default(T);
+            return false;
         }
     }
 

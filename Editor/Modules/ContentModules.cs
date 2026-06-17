@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // 'BuildContext' is obsolete: 'Use GenerationContext and AssetRegistry instead.'
 using System.Collections;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,7 +24,7 @@ namespace AuraLiteWorldGenerator.Editor.Modules
             for (int i = 0; i < ctx.Layout.houses.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();
-                BuildingBuilder.Build(oldCtx, grid, ctx.Layout.houses[i], housesRoot.transform, i, ctx.Settings.villageStyle, ctx.Layout.Random);
+                BuildingBuilder.Build(oldCtx, grid, ctx.Layout.houses[i], housesRoot.transform, i, ctx.Settings.villageStyle, ctx.Layout.random);
                 if (i % 10 == 0)
                 {
                     progress.Report("Building houses", (float)i / ctx.Layout.houses.Count);

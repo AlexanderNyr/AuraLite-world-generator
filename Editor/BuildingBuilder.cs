@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // 'BuildContext' is obsolete: 'Use GenerationContext and AssetRegistry instead.'
 using AuraLiteWorldGenerator.Runtime;
 using UnityEngine;
 using UnityEngine.Rendering;

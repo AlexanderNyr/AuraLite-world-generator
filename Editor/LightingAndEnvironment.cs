@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // 'BuildContext' is obsolete: 'Use GenerationContext and AssetRegistry instead.'
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -32,7 +33,7 @@ namespace AuraLiteWorldGenerator.Editor
             QualitySettings.globalTextureMipmapLimit = 0;
             
             // Better shadow quality
-            QualitySettings.shadowResolution = settings.qualityBoost >= 5f ? ShadowResolution.VeryHigh : ShadowResolution.High;
+            QualitySettings.shadowResolution = settings.qualityBoost >= 5f ? UnityEngine.ShadowResolution.VeryHigh : UnityEngine.ShadowResolution.High;
             QualitySettings.shadowProjection = ShadowProjection.CloseFit;
             QualitySettings.shadowNearPlaneOffset = 2f;
             QualitySettings.shadowDistance = 400f + settings.qualityBoost * 50f;

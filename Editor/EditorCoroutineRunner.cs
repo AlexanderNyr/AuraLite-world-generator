@@ -80,10 +80,35 @@ namespace AuraLiteWorldGenerator.Editor
 
         public static bool IsRunning => _legacyCoroutine != null && _legacyCoroutine.IsRunning;
 
+        /// <summary>
+        /// Starts an EditorCoroutine, replacing any previous (already-stopped) instance.
+        /// Throws if a coroutine is genuinely still running.
+        /// </summary>
+        /// <remarks>
+        /// RunInternal signals the task completion source (tcs.SetResult / SetCanceled /
+        /// SetException) from inside the coroutine body, but EditorCoroutine.Stop() is
+        /// only called from OnUpdate after the iterator's MoveNext returns false. That
+        /// creates a transient window where the previous coroutine has logically
+        /// completed (tcs.Task is done) but _legacyCoroutine.IsRunning is still true
+        /// until OnUpdate processes the final yield break. If the awaiter resumes
+        /// during that window and calls Start() again, the IsRunning guard would
+        /// trip and throw "EditorCoroutineRunner legacy instance is already running".
+        /// To make this resilient we proactively drop the stale reference whenever it
+        /// is not actively running, so the next Start() call always gets a clean slate.
+        /// </remarks>
         public static void Start(IEnumerator routine)
         {
+            // Defensive cleanup: if the previous coroutine has already stopped
+            // (IsRunning == false), drop the reference. This is the common case
+            // after a coroutine completes, so we always take this branch.
+            if (_legacyCoroutine != null && !_legacyCoroutine.IsRunning)
+            {
+                _legacyCoroutine = null;
+            }
+
             if (IsRunning)
                 throw new InvalidOperationException("EditorCoroutineRunner legacy instance is already running.");
+
             _legacyCoroutine = new EditorCoroutine(routine);
             _legacyCoroutine.Start();
         }
@@ -97,7 +122,18 @@ namespace AuraLiteWorldGenerator.Editor
             }
             EditorUtility.ClearProgressBar();
         }
-        
+
+        /// <summary>
+        /// Emergency recovery: drops any stale legacy reference without touching
+        /// EditorApplication.update subscriptions. Useful if the static state
+        /// somehow got out of sync with reality (e.g., after a domain reload or
+        /// if an editor crash left the runner in a stuck state).
+        /// </summary>
+        public static void Reset()
+        {
+            _legacyCoroutine = null;
+        }
+
         public static EditorCoroutine StartNew(IEnumerator routine)
         {
             var coroutine = new EditorCoroutine(routine);

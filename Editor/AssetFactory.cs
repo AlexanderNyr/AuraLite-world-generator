@@ -473,35 +473,10 @@ namespace AuraLiteWorldGenerator.Editor
             }
 
             // Color Curves for cinematic look
+            // URP 17 (Unity 6) changed the master/red/green/blue parameters to TextureCurveParameter.
+            // AnimationCurve is no longer directly assignable, so we add the component with default
+            // values rather than overriding curves here.
             profile.Add<ColorCurves>(true);
-            if (profile.TryGet<ColorCurves>(out var curves))
-            {
-                // Slight warm shadows, cool highlights
-                var masterCurve = curves.master;
-                masterCurve.Override(new AnimationCurve(
-                    new Keyframe(0f, 0f),
-                    new Keyframe(0.25f, 0.26f),
-                    new Keyframe(0.5f, 0.52f),
-                    new Keyframe(0.75f, 0.76f),
-                    new Keyframe(1f, 1f)
-                ));
-                
-                // Red channel: slightly lifted shadows for warmth
-                var redCurve = curves.red;
-                redCurve.Override(new AnimationCurve(
-                    new Keyframe(0f, 0.02f),
-                    new Keyframe(0.5f, 0.51f),
-                    new Keyframe(1f, 1f)
-                ));
-                
-                // Blue channel: slightly cool highlights
-                var blueCurve = curves.blue;
-                blueCurve.Override(new AnimationCurve(
-                    new Keyframe(0f, 0f),
-                    new Keyframe(0.5f, 0.49f),
-                    new Keyframe(1f, 0.98f)
-                ));
-            }
 
             // White Balance for warm sunlight feel
             profile.Add<WhiteBalance>(true);
@@ -517,7 +492,7 @@ namespace AuraLiteWorldGenerator.Editor
             {
                 vignette.intensity.Override(0.2f);
                 vignette.smoothness.Override(0.5f);
-                vignette.roundness.Override(0.8f);
+                // URP 17 removed 'roundness' from Vignette - it's gone in Unity 6's URP package.
                 vignette.color.Override(new Color(0f, 0f, 0f));
             }
 

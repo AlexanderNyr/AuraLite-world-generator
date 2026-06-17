@@ -1,11 +1,17 @@
+// NavMesh generation requires the "AI Navigation" package (com.unity.ai.navigation).
+// In Unity 6 the modern NavMeshSurface / NavMeshModifier / NavMeshLink types live in
+// Unity.AI.Navigation.dll; the legacy UnityEngine.AI.NavMeshLink was removed.
+// The asmdef references Unity.AI.Navigation, but it might not be installed in every
+// project, so all modern types are guarded by UNITY_AI_NAVIGATION. Without the
+// package, NavMesh generation is simply skipped.
+#pragma warning disable CS0618 // 'BuildContext' is obsolete: 'Use GenerationContext and AssetRegistry instead.'
 using System.Threading;
 using System.Threading.Tasks;
 using AuraLiteWorldGenerator.Editor.Core;
 using UnityEngine;
-using UnityEngine.AI;
 
 #if UNITY_AI_NAVIGATION
-using UnityEditor.AI;
+using Unity.AI.Navigation;
 #endif
 
 namespace AuraLiteWorldGenerator.Editor.Modules
@@ -33,11 +39,13 @@ namespace AuraLiteWorldGenerator.Editor.Modules
             // 1. Add NavMeshModifier to key objects
             SetupNavMeshModifiers(ctx);
 
-            // 2. Add NavMeshLink for the bridge
+#if UNITY_AI_NAVIGATION
+            // 2. Add NavMeshLink for the bridge (only available with the package)
             SetupBridgeLink(ctx);
 
             // 3. Create NavMeshSurface and bake
             SetupNavMeshSurface(ctx, root);
+#endif
 
             progress.Report("NavMesh complete", 1.0f);
             return Task.CompletedTask;
@@ -56,15 +64,18 @@ namespace AuraLiteWorldGenerator.Editor.Modules
                         var terrain = grid.terrains[x, z];
                         if (terrain == null) continue;
 
+#if UNITY_AI_NAVIGATION
                         var modifier = terrain.gameObject.GetComponent<NavMeshModifier>();
                         if (modifier == null)
                             modifier = terrain.gameObject.AddComponent<NavMeshModifier>();
                         modifier.areaID = 0; // Walkable
                         modifier.overrideArea = true;
+#endif
                     }
                 }
             }
 
+#if UNITY_AI_NAVIGATION
             // Roads are walkable with lower cost
             if (ctx.Hierarchy.RoadsRoot != null)
             {
@@ -83,11 +94,12 @@ namespace AuraLiteWorldGenerator.Editor.Modules
                 waterModifier.areaID = 1; // Not Walkable
                 waterModifier.overrideArea = true;
             }
+#endif
         }
 
+#if UNITY_AI_NAVIGATION
         private void SetupBridgeLink(GenerationContext ctx)
         {
-            // Find the bridge and add a NavMeshLink
             var layout = ctx.Layout;
             if (layout.riverPoints.Count < 3) return;
 
@@ -120,7 +132,6 @@ namespace AuraLiteWorldGenerator.Editor.Modules
             surface.defaultArea = 0; // Walkable
             surface.layerMask = -1; // All layers
 
-            // Set reasonable defaults for rural world
             var settings = surface.GetBuildSettings();
             settings.agentRadius = 0.5f;
             settings.agentHeight = 2f;
@@ -131,14 +142,11 @@ namespace AuraLiteWorldGenerator.Editor.Modules
             settings.overrideTileSize = false;
             surface.SetBuildSettings(settings);
 
-#if UNITY_AI_NAVIGATION
-            // Bake the NavMesh
-            UnityEditor.AI.NavMeshBuilder.BuildNavMesh();
-#elif UNITY_EDITOR
-            // Fallback for older Unity versions
-            UnityEditor.AI.NavMeshBuilder.BuildNavMesh();
-#endif
+            // Bake the NavMesh - use the surface's own BuildNavMesh API instead of
+            // the deprecated UnityEditor.AI.NavMeshBuilder.
+            surface.BuildNavMesh();
         }
+#endif
 
         private GameObject FindChildByName(GameObject parent, string name)
         {

@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // 'BuildContext' is obsolete: 'Use GenerationContext and AssetRegistry instead.'
 using UnityEngine;
 using UnityEngine.Rendering;
 using AuraLiteWorldGenerator.Editor.Core;
@@ -96,11 +97,6 @@ namespace AuraLiteWorldGenerator.Editor
             GameObject root = new GameObject("WaterVegetation");
             root.transform.SetParent(parent);
 
-            // Get biome provider for biome-aware vegetation
-            IBiomeProvider biomeProvider = null;
-            // Note: biomeProvider would be injected in the full pipeline
-            // For now, we use the default
-            
             int reedCount = Mathf.RoundToInt(180f * settings.qualityBoost);
             for (int i = 0; i < reedCount; i++)
             {

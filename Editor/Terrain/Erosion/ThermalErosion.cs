@@ -1,5 +1,6 @@
 using AuraLiteWorldGenerator.Runtime;
 using AuraLiteWorldGenerator.Editor.Core;
+using UnityEngine;
 
 namespace AuraLiteWorldGenerator.Editor.Terrain.Erosion
 {

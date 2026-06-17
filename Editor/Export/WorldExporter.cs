@@ -82,7 +82,7 @@ namespace AuraLiteWorldGenerator.Editor.Export
             AssetDatabase.Refresh();
         }
 
-        public static void ExportHeightmap(Terrain terrain, string path)
+        public static void ExportHeightmap(UnityEngine.Terrain terrain, string path)
         {
             var pathDir = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(pathDir) && !Directory.Exists(pathDir))
