@@ -151,6 +151,18 @@ namespace AuraLiteWorldGenerator.Editor
             return terrain != null ? terrain.SampleHeight(worldPos) : 0f;
         }
 
+        public static Bounds CalculateHierarchyBounds(GameObject root)
+        {
+            Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+            if (renderers.Length == 0)
+                return new Bounds(root.transform.position, Vector3.one * 10f);
+
+            Bounds b = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++)
+                b.Encapsulate(renderers[i].bounds);
+            return b;
+        }
+
         public static bool IntersectRects(Vector2 pos1, Vector2 size1, float angle1, Vector2 pos2, Vector2 size2, float angle2, float padding)
         {
             Vector2[] corners1 = GetRectCorners(pos1, size1 + Vector2.one * padding, angle1);

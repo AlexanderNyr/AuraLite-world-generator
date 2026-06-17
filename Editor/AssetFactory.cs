@@ -251,55 +251,49 @@ namespace AuraLiteWorldGenerator.Editor
         {
             if (profile == null) return;
 
-            // Bloom & Tonemapping
-            var bloom = profile.Add<Bloom>(true);
-            bloom.active = true;
-            bloom.intensity.overrideState = true;
-            bloom.intensity.value = 0.5f;
-
-            var tonemapping = profile.Add<Tonemapping>(true);
-            tonemapping.active = true;
-            tonemapping.mode.overrideState = true;
-            tonemapping.mode.value = TonemappingMode.ACES;
-
-            var colorAdjustments = profile.Add<ColorAdjustments>(true);
-            colorAdjustments.active = true;
-            colorAdjustments.contrast.overrideState = true;
-            colorAdjustments.contrast.value = 15f;
-            colorAdjustments.saturation.overrideState = true;
-            colorAdjustments.saturation.value = 10f;
-
-            // Volumetric Clouds (Unity 6 / URP 14+)
-            var clouds = profile.Add<VolumetricClouds>(true);
-            clouds.active = true;
-            clouds.enable.overrideState = true;
-            clouds.enable.value = true;
-            clouds.localClouds.overrideState = true;
-            clouds.localClouds.value = true;
-
-            // Fog (Volumetric Fog in Unity 6 URP)
-            var fog = profile.Add<Fog>(true);
-            fog.active = true;
-            fog.enabled.overrideState = true;
-            fog.enabled.value = true;
-            
-            // Try to set volumetric fog if the property exists in this URP version
-            var volumetricFogProp = fog.GetType().GetField("volumetricFog");
-            if (volumetricFogProp != null)
+            // Core URP Bloom & Tonemapping
+            profile.Add<Bloom>(true);
+            if (profile.TryGet<Bloom>(out var bloom))
             {
-                var volumetricFogValue = volumetricFogProp.GetValue(fog) as BoolParameter;
-                if (volumetricFogValue != null)
-                {
-                    volumetricFogValue.overrideState = true;
-                    volumetricFogValue.value = true;
-                }
+                bloom.intensity.Override(0.5f);
+                bloom.threshold.Override(1.0f);
             }
 
-            // Physically Based Sky (Unity 6 / URP 14+)
-            var sky = profile.Add<PhysicallyBasedSky>(true);
-            sky.active = true;
-            sky.type.overrideState = true;
-            sky.type.value = PhysicallyBasedSkyModel.Earth;
+            profile.Add<Tonemapping>(true);
+            if (profile.TryGet<Tonemapping>(out var tonemapping))
+            {
+                tonemapping.mode.Override(TonemappingMode.ACES);
+            }
+
+            profile.Add<ColorAdjustments>(true);
+            if (profile.TryGet<ColorAdjustments>(out var colorAdjustments))
+            {
+                colorAdjustments.contrast.Override(15f);
+                colorAdjustments.saturation.Override(10f);
+            }
+
+            // For Unity 6 Volumetric effects, we use reflection to avoid compilation errors 
+            // if the project is using an older URP version or missing references.
+            AddVolumeComponentIfExists(profile, "UnityEngine.Rendering.Universal.VolumetricClouds");
+            AddVolumeComponentIfExists(profile, "UnityEngine.Rendering.Universal.PhysicallyBasedSky");
+            AddVolumeComponentIfExists(profile, "UnityEngine.Rendering.Universal.Fog");
+        }
+
+        private static void AddVolumeComponentIfExists(VolumeProfile profile, string typeName)
+        {
+            Type type = Type.GetType(typeName + ", Unity.RenderPipelines.Universal.Runtime");
+            if (type == null) type = Type.GetType(typeName); // Try without assembly
+            
+            if (type != null && typeof(VolumeComponent).IsAssignableFrom(type))
+            {
+                if (!profile.Has(type))
+                {
+                    var comp = profile.Add(type, true);
+                    // Try to enable it
+                    var activeField = type.GetField("active");
+                    if (activeField != null) activeField.SetValue(comp, true);
+                }
+            }
         }
 
         public static void EnableEmission(Material material, Color emissionColor)

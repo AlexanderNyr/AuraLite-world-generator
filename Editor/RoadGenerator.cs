@@ -29,7 +29,7 @@ namespace AuraLiteWorldGenerator.Editor
                 float length = Vector3.Distance(a, b);
                 
                 // Increase subdivision for smoother roads at high quality
-                float targetSegLen = Mathf.Max(1.5f, 10.0f / (1.0f + settings.qualityBoost * 0.2f));
+                float targetSegLen = Mathf.Max(1.5f, 10.0f / (1.0f + qualityBoost * 0.2f));
                 int pieces = Mathf.Max(3, Mathf.CeilToInt(length / targetSegLen));
 
                 for (int i = 0; i < pieces; i++)

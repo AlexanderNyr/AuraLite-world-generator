@@ -47,9 +47,15 @@ namespace AuraLiteWorldGenerator.Editor
             sun.shadowBias = 0.03f;
             sun.shadowNormalBias = 0.4f;
             
+            // Safe way to add light data without breaking compilation on different URP versions
             var lightData = sunGO.AddComponent<UniversalAdditionalLightData>();
-            lightData.volumetricLighting = true;
-            lightData.lightIntensityMultiplier = 1.0f;
+            if (lightData != null)
+            {
+                // Try to set volumetric lighting via reflection if available
+                var volProp = lightData.GetType().GetProperty("volumetricLighting");
+                if (volProp != null && volProp.PropertyType == typeof(bool))
+                    volProp.SetValue(lightData, true);
+            }
 
             RenderSettings.sun = sun;
 
