@@ -57,9 +57,15 @@ namespace AuraLiteWorldGenerator.Editor
             mat.name = Path.GetFileNameWithoutExtension(path);
             SetColorSafe(mat, "_BaseColor", color);
             SetColorSafe(mat, "_Color", color);
+            SetColorSafe(mat, "_SpecColor", Color.black);
             SetFloatSafe(mat, "_Metallic", metallic);
             SetFloatSafe(mat, "_Smoothness", smoothness);
             SetFloatSafe(mat, "_Glossiness", smoothness);
+            if (smoothness <= 0.01f)
+            {
+                mat.DisableKeyword("_SPECULAR_HIGHLIGHTS");
+                mat.SetFloat("_SpecularHighlights", 0f);
+            }
             AssetDatabase.CreateAsset(mat, path);
             return mat;
         }
@@ -89,11 +95,11 @@ namespace AuraLiteWorldGenerator.Editor
             mat.renderQueue = (int)RenderQueue.Transparent;
         }
 
-        public static Texture2D CreateOrReplaceTextureAsset(string path, int width, int height, Color a, Color b, float noiseAmount, float scale, bool highContrast)
+        public static Texture2D CreateOrReplaceTextureAsset(string path, int width, int height, Color a, Color b, float noiseAmount, float scale, bool highContrast, bool isNormal = false)
         {
             DeleteExistingAsset<Texture2D>(path);
 
-            Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, true)
+            Texture2D tex = new Texture2D(width, height, isNormal ? TextureFormat.RGBA32 : TextureFormat.RGBA32, true)
             {
                 name = Path.GetFileNameWithoutExtension(path),
                 wrapMode = TextureWrapMode.Repeat,
@@ -101,26 +107,62 @@ namespace AuraLiteWorldGenerator.Editor
             };
 
             Color[] pixels = new Color[width * height];
-            for (int y = 0; y < height; y++)
+            if (!isNormal)
             {
-                for (int x = 0; x < width; x++)
+                for (int y = 0; y < height; y++)
                 {
-                    float nx = x / (float)(width - 1);
-                    float ny = y / (float)(height - 1);
-                    float n1 = Mathf.PerlinNoise(nx * scale, ny * scale);
-                    float n2 = Mathf.PerlinNoise(nx * scale * 2.1f + 23.1f, ny * scale * 2.1f + 57.8f);
-                    float n = Mathf.Lerp(n1, n2, 0.45f);
-                    if (highContrast)
-                        n = Mathf.Pow(n, 1.35f);
-                    Color c = Color.Lerp(a, b, n);
-                    c += new Color(noiseAmount * (n2 - 0.5f), noiseAmount * (n1 - 0.5f), noiseAmount * (n - 0.5f), 0f);
-                    pixels[y * width + x] = c;
+                    for (int x = 0; x < width; x++)
+                    {
+                        float nx = x / (float)(width - 1);
+                        float ny = y / (float)(height - 1);
+                        float n1 = Mathf.PerlinNoise(nx * scale, ny * scale);
+                        float n2 = Mathf.PerlinNoise(nx * scale * 2.1f + 23.1f, ny * scale * 2.1f + 57.8f);
+                        float n3 = Mathf.PerlinNoise(nx * scale * 4.5f, ny * scale * 4.5f);
+                        float n = Mathf.Lerp(n1, n2, 0.45f);
+                        n = Mathf.Lerp(n, n3, 0.2f);
+                        if (highContrast)
+                            n = Mathf.Pow(n, 1.4f);
+                        Color c = Color.Lerp(a, b, n);
+                        c += new Color(noiseAmount * (n2 - 0.5f), noiseAmount * (n1 - 0.5f), noiseAmount * (n - 0.5f), 0f);
+                        c.a = 0f; // Smoothness 0
+                        pixels[y * width + x] = c;
+                    }
+                }
+            }
+            else
+            {
+                // Generate simple noise-based Normal Map
+                for (int y = 0; y < height; y++)
+                {
+                    for (int x = 0; x < width; x++)
+                    {
+                        float nx = x / (float)(width - 1);
+                        float ny = y / (float)(height - 1);
+                        float strength = 0.15f;
+                        float v0 = Mathf.PerlinNoise(nx * scale, ny * scale);
+                        float vx = Mathf.PerlinNoise((nx + 0.01f) * scale, ny * scale);
+                        float vy = Mathf.PerlinNoise(nx * scale, (ny + 0.01f) * scale);
+                        
+                        Vector3 normal = new Vector3((v0 - vx) * strength, (v0 - vy) * strength, 1.0f).normalized;
+                        pixels[y * width + x] = new Color(normal.x * 0.5f + 0.5f, normal.y * 0.5f + 0.5f, normal.z * 0.5f + 0.5f, 1f);
+                    }
                 }
             }
 
             tex.SetPixels(pixels);
             tex.Apply(true, false);
             AssetDatabase.CreateAsset(tex, path);
+            
+            if (isNormal)
+            {
+                TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
+                if (importer != null)
+                {
+                    importer.textureType = TextureImporterType.NormalMap;
+                    importer.SaveAndReimport();
+                }
+            }
+            
             return tex;
         }
 
@@ -226,10 +268,38 @@ namespace AuraLiteWorldGenerator.Editor
             colorAdjustments.contrast.value = 15f;
             colorAdjustments.saturation.overrideState = true;
             colorAdjustments.saturation.value = 10f;
+
+            // Volumetric Clouds (Unity 6 / URP 14+)
+            var clouds = profile.Add<VolumetricClouds>(true);
+            clouds.active = true;
+            clouds.enable.overrideState = true;
+            clouds.enable.value = true;
+            clouds.localClouds.overrideState = true;
+            clouds.localClouds.value = true;
+
+            // Fog (Volumetric Fog in Unity 6 URP)
+            var fog = profile.Add<Fog>(true);
+            fog.active = true;
+            fog.enabled.overrideState = true;
+            fog.enabled.value = true;
             
-            // Note: In Unity 6 URP, Volumetric Clouds and physically based sky components 
-            // are available but may have different names or require specific using directives.
-            // To ensure compilation, we stick to core URP volume components.
+            // Try to set volumetric fog if the property exists in this URP version
+            var volumetricFogProp = fog.GetType().GetField("volumetricFog");
+            if (volumetricFogProp != null)
+            {
+                var volumetricFogValue = volumetricFogProp.GetValue(fog) as BoolParameter;
+                if (volumetricFogValue != null)
+                {
+                    volumetricFogValue.overrideState = true;
+                    volumetricFogValue.value = true;
+                }
+            }
+
+            // Physically Based Sky (Unity 6 / URP 14+)
+            var sky = profile.Add<PhysicallyBasedSky>(true);
+            sky.active = true;
+            sky.type.overrideState = true;
+            sky.type.value = PhysicallyBasedSkyModel.Earth;
         }
 
         public static void EnableEmission(Material material, Color emissionColor)

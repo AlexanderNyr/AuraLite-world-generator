@@ -21,9 +21,9 @@ namespace AuraLiteWorldGenerator.Editor
             RenderSettings.fogStartDistance = settings.fogStartKm * 1000f;
             RenderSettings.fogEndDistance = Mathf.Max(RenderSettings.fogStartDistance + 1000f, settings.fogEndKm * 1000f);
             RenderSettings.fogColor = new Color(0.68f, 0.75f, 0.82f);
-            QualitySettings.shadowCascades = 4;
-            QualitySettings.shadowDistance = 420f + settings.qualityBoost * 140f;
-            QualitySettings.lodBias = 3.1f + settings.qualityBoost * 1.1f;
+            QualitySettings.shadowCascades = settings.qualityBoost >= 10f ? 4 : 2;
+            QualitySettings.shadowDistance = 400f + settings.qualityBoost * 50f;
+            QualitySettings.lodBias = 2.0f + (settings.qualityBoost * 0.5f);
             QualitySettings.enableLODCrossFade = true;
             QualitySettings.antiAliasing = 8;
             QualitySettings.anisotropicFiltering = AnisotropicFiltering.ForceEnable;
@@ -46,6 +46,11 @@ namespace AuraLiteWorldGenerator.Editor
             sun.shadowStrength = 0.92f;
             sun.shadowBias = 0.03f;
             sun.shadowNormalBias = 0.4f;
+            
+            var lightData = sunGO.AddComponent<UniversalAdditionalLightData>();
+            lightData.volumetricLighting = true;
+            lightData.lightIntensityMultiplier = 1.0f;
+
             RenderSettings.sun = sun;
 
             GameObject fillGO = new GameObject("SkyFill");
@@ -64,7 +69,10 @@ namespace AuraLiteWorldGenerator.Editor
             GameObject root = new GameObject("SkyClouds");
             root.transform.SetParent(parent);
             float baseHeight = Mathf.Max(900f, layout.terrainHeightMeters * 5.5f);
-            int layers = Mathf.RoundToInt(Mathf.Lerp(10f, 18f, Mathf.InverseLerp(1f, 3f, settings.qualityBoost)));
+            
+            // Scaled cloud layers
+            int layers = Mathf.RoundToInt(6f + settings.qualityBoost * 2f);
+            layers = Mathf.Min(layers, 120); // Safety cap
             for (int i = 0; i < layers; i++)
             {
                 float ring = i % 3;

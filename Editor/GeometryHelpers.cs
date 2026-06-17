@@ -151,16 +151,76 @@ namespace AuraLiteWorldGenerator.Editor
             return terrain != null ? terrain.SampleHeight(worldPos) : 0f;
         }
 
-        public static Bounds CalculateHierarchyBounds(GameObject root)
+        public static bool IntersectRects(Vector2 pos1, Vector2 size1, float angle1, Vector2 pos2, Vector2 size2, float angle2, float padding)
         {
-            Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
-            if (renderers.Length == 0)
-                return new Bounds(root.transform.position, Vector3.one * 10f);
+            Vector2[] corners1 = GetRectCorners(pos1, size1 + Vector2.one * padding, angle1);
+            Vector2[] corners2 = GetRectCorners(pos2, size2 + Vector2.one * padding, angle2);
 
-            Bounds b = renderers[0].bounds;
-            for (int i = 1; i < renderers.Length; i++)
-                b.Encapsulate(renderers[i].bounds);
-            return b;
+            return IntersectPolygons(corners1, corners2);
+        }
+
+        private static Vector2[] GetRectCorners(Vector2 pos, Vector2 size, float angle)
+        {
+            Vector2[] corners = new Vector2[4];
+            float rad = angle * Mathf.Deg2Rad;
+            float cos = Mathf.Cos(rad);
+            float sin = Mathf.Sin(rad);
+
+            Vector2 half = size * 0.5f;
+            Vector2[] dirs = { new Vector2(-half.x, -half.y), new Vector2(half.x, -half.y), new Vector2(half.x, half.y), new Vector2(-half.x, half.y) };
+
+            for (int i = 0; i < 4; i++)
+            {
+                corners[i].x = pos.x + (dirs[i].x * cos - dirs[i].y * sin);
+                corners[i].y = pos.y + (dirs[i].x * sin + dirs[i].y * cos);
+            }
+            return corners;
+        }
+
+        private static bool IntersectPolygons(Vector2[] poly1, Vector2[] poly2)
+        {
+            for (int i = 0; i < poly1.Length + poly2.Length; i++)
+            {
+                Vector2 normal;
+                if (i < poly1.Length)
+                    normal = GetNormal(poly1, i);
+                else
+                    normal = GetNormal(poly2, i - poly1.Length);
+
+                if (IsSeparatingAxis(normal, poly1, poly2))
+                    return false;
+            }
+            return true;
+        }
+
+        private static Vector2 GetNormal(Vector2[] poly, int i)
+        {
+            Vector2 p1 = poly[i];
+            Vector2 p2 = poly[(i + 1) % poly.Length];
+            Vector2 edge = p2 - p1;
+            return new Vector2(-edge.y, edge.x).normalized;
+        }
+
+        private static bool IsSeparatingAxis(Vector2 axis, Vector2[] poly1, Vector2[] poly2)
+        {
+            float min1 = float.MaxValue, max1 = float.MinValue;
+            float min2 = float.MaxValue, max2 = float.MinValue;
+
+            foreach (var p in poly1)
+            {
+                float proj = Vector2.Dot(p, axis);
+                min1 = Mathf.Min(min1, proj);
+                max1 = Mathf.Max(max1, proj);
+            }
+
+            foreach (var p in poly2)
+            {
+                float proj = Vector2.Dot(p, axis);
+                min2 = Mathf.Min(min2, proj);
+                max2 = Mathf.Max(max2, proj);
+            }
+
+            return max1 < min2 || max2 < min1;
         }
     }
 }

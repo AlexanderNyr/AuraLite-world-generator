@@ -151,25 +151,33 @@ namespace AuraLiteWorldGenerator.Editor
             Material wall = p.wall ?? ctx.wallCreamMat;
             Material roof = p.roof ?? ctx.roofDarkMat;
 
-            GameObjectBuilder.CreateCubeChild(root, "StoneBase", new Vector3(0f, 0.22f, 0f), new Vector3(p.width * 1.05f, 0.44f, p.depth * 1.05f), ctx.stoneMat);
+            // Foundation/Basement to handle slopes better
+            GameObjectBuilder.CreateCubeChild(root, "StoneBase", new Vector3(0f, -0.4f, 0f), new Vector3(p.width * 1.05f, 1.2f, p.depth * 1.05f), ctx.stoneMat);
+            
+            // Main body
             GameObjectBuilder.CreateCubeChild(root, "Body", new Vector3(0f, p.height * 0.5f, 0f), new Vector3(p.width, p.height, p.depth), wall);
-            GameObjectBuilder.CreateMeshChild(root, "Roof", ctx.roofMesh, new Vector3(0f, p.height + 0.02f, 0f), new Vector3(p.width * 1.14f, p.roofHeight, p.depth * 1.15f), roof);
-            GameObjectBuilder.CreateCubeChild(root, "SillBand", new Vector3(0f, p.height * 0.08f, p.depth * 0.51f), new Vector3(p.width * 1.02f, 0.12f, 0.08f), ctx.timberMat);
+            
+            // Roof with better overhang
+            float overH = 0.4f;
+            GameObjectBuilder.CreateMeshChild(root, "Roof", ctx.roofMesh, new Vector3(0f, p.height - 0.05f, 0f), new Vector3(p.width + overH, p.roofHeight, p.depth + overH), roof);
+            
+            // Trim / Plinth
+            GameObjectBuilder.CreateCubeChild(root, "SillBand", new Vector3(0f, 0.15f, p.depth * 0.51f), new Vector3(p.width * 1.02f, 0.25f, 0.12f), ctx.timberMat);
 
             if (p.annex && p.kind != BuildingKind.Barn)
             {
                 float side = random.Value > 0.5f ? -1f : 1f;
-                float aw = p.width * 0.42f;
-                float ad = p.depth * 0.52f;
-                float ah = p.height * 0.72f;
-                GameObjectBuilder.CreateCubeChild(root, "Annex", new Vector3(side * (p.width * 0.52f), ah * 0.5f, -p.depth * 0.04f), new Vector3(aw, ah, ad), wall);
-                GameObjectBuilder.CreateMeshChild(root, "AnnexRoof", ctx.roofMesh, new Vector3(side * (p.width * 0.52f), ah + 0.02f, -p.depth * 0.04f), new Vector3(aw * 1.12f, p.roofHeight * 0.7f, ad * 1.15f), roof);
+                float aw = p.width * 0.45f;
+                float ad = p.depth * 0.55f;
+                float ah = p.height * 0.75f;
+                GameObjectBuilder.CreateCubeChild(root, "Annex", new Vector3(side * (p.width * 0.52f), ah * 0.5f, -p.depth * 0.05f), new Vector3(aw, ah, ad), wall);
+                GameObjectBuilder.CreateMeshChild(root, "AnnexRoof", ctx.roofMesh, new Vector3(side * (p.width * 0.52f), ah - 0.02f, -p.depth * 0.05f), new Vector3(aw + overH * 0.6f, p.roofHeight * 0.75f, ad + overH * 0.6f), roof);
             }
 
             float doorW = GetDoorWidth(p.kind);
             float doorH = GetDoorHeight(p.kind);
-            GameObjectBuilder.CreateCubeChild(root, "Door", new Vector3(0f, doorH * 0.5f, p.depth * 0.505f), new Vector3(doorW, doorH, 0.18f), ctx.timberMat);
-            GameObjectBuilder.CreateCubeChild(root, "DoorLintel", new Vector3(0f, doorH + 0.08f, p.depth * 0.51f), new Vector3(doorW + 0.16f, 0.16f, 0.16f), ctx.stoneMat);
+            GameObjectBuilder.CreateCubeChild(root, "Door", new Vector3(0f, doorH * 0.5f, p.depth * 0.505f), new Vector3(doorW, doorH, 0.2f), ctx.timberMat);
+            GameObjectBuilder.CreateCubeChild(root, "DoorLintel", new Vector3(0f, doorH + 0.1f, p.depth * 0.52f), new Vector3(doorW + 0.3f, 0.2f, 0.2f), ctx.stoneMat);
         }
 
         private static float GetDoorWidth(BuildingKind kind)
@@ -455,27 +463,69 @@ namespace AuraLiteWorldGenerator.Editor
             Material wall = p.wall ?? ctx.wallCreamMat;
             Material roof = p.roof ?? ctx.roofDarkMat;
 
-            GameObject lod0 = new GameObject("LOD0");
-            lod0.transform.SetParent(root.transform, false);
-            GameObjectBuilder.MoveAllChildrenExcept(root.transform, lod0.transform, null);
+            // Create 10 LOD levels
+            const int lodCount = 10;
+            GameObject[] lodObjects = new GameObject[lodCount];
+            LOD[] lods = new LOD[lodCount];
 
-            GameObject lod1 = new GameObject("LOD1");
-            lod1.transform.SetParent(root.transform, false);
-            GameObjectBuilder.CreateCubeChild(lod1.transform, "Body", new Vector3(0f, p.height * 0.5f, 0f), new Vector3(p.width * 0.94f, p.height * 0.88f, p.depth * 0.94f), wall);
-            GameObjectBuilder.CreateMeshChild(lod1.transform, "Roof", ctx.roofMesh, new Vector3(0f, p.height * 0.88f, 0f), new Vector3(p.width, Mathf.Lerp(1.2f, 2.6f, p.height / 10f), p.depth), roof);
-            if (p.kind == BuildingKind.Chapel)
-                GameObjectBuilder.CreateCubeChild(lod1.transform, "Tower", new Vector3(0f, p.height * 0.95f, 0f), new Vector3(p.width * 0.18f, p.height * 0.9f, p.depth * 0.18f), wall);
-            else if (p.kind == BuildingKind.Mill)
-                GameObjectBuilder.CreateCylinderChild(lod1.transform, "Tower", new Vector3(0f, p.height * 0.60f, 0f), new Vector3(p.width * 0.10f, p.height * 0.60f, p.depth * 0.10f), wall);
+            // LOD0 - Full Detail (Original children)
+            lodObjects[0] = new GameObject("LOD0");
+            lodObjects[0].transform.SetParent(root.transform, false);
+            GameObjectBuilder.MoveAllChildrenExcept(root.transform, lodObjects[0].transform, null);
 
-            GameObject lod2 = new GameObject("LOD2");
-            lod2.transform.SetParent(root.transform, false);
-            GameObjectBuilder.CreateCubeChild(lod2.transform, "Silhouette", new Vector3(0f, p.height * 0.5f, 0f), new Vector3(p.width * 0.96f, p.height * 0.92f, p.depth * 0.96f), wall);
-            GameObjectBuilder.CreateCubeChild(lod2.transform, "Top", new Vector3(0f, p.height + p.roofHeight * 0.34f, 0f), new Vector3(p.width * 0.72f, p.roofHeight * 0.68f, p.depth * 0.72f), roof);
-            GameObjectBuilder.SetShadowsRecursive(lod1, ShadowCastingMode.Off, false);
-            GameObjectBuilder.SetShadowsRecursive(lod2, ShadowCastingMode.Off, false);
+            // Progressive simplification for remaining levels
+            for (int i = 1; i < lodCount; i++)
+            {
+                lodObjects[i] = new GameObject("LOD" + i);
+                lodObjects[i].transform.SetParent(root.transform, false);
 
-            LODHelpers.ApplyLODGroup(root, lod0, lod1, lod2, 0.78f, 0.34f, 0.09f);
+                float t = i / (float)(lodCount - 1);
+                
+                // For intermediate LODs (1-4), we use the body and roof, but hide detail parts
+                if (i < 5)
+                {
+                    // Copy main parts
+                    GameObjectBuilder.CreateCubeChild(lodObjects[i].transform, "Body", new Vector3(0f, p.height * 0.5f, 0f), new Vector3(p.width, p.height, p.depth), wall);
+                    GameObjectBuilder.CreateMeshChild(lodObjects[i].transform, "Roof", ctx.roofMesh, new Vector3(0f, p.height - 0.05f, 0f), new Vector3(p.width + 0.3f, p.roofHeight, p.depth + 0.3f), roof);
+                    
+                    if (i < 3) // Keep annex for early LODs
+                    {
+                         if (p.annex && p.kind != BuildingKind.Barn)
+                         {
+                             float aw = p.width * 0.45f; float ad = p.depth * 0.55f; float ah = p.height * 0.75f;
+                             GameObjectBuilder.CreateCubeChild(lodObjects[i].transform, "Annex", new Vector3(p.width * 0.52f, ah * 0.5f, -p.depth * 0.05f), new Vector3(aw, ah, ad), wall);
+                         }
+                    }
+                    if (i < 2) // Keep door and chimney for very early LODs
+                    {
+                        float doorW = GetDoorWidth(p.kind); float doorH = GetDoorHeight(p.kind);
+                        GameObjectBuilder.CreateCubeChild(lodObjects[i].transform, "Door", new Vector3(0f, doorH * 0.5f, p.depth * 0.505f), new Vector3(doorW, doorH, 0.1f), ctx.timberMat);
+                        GameObjectBuilder.CreateCubeChild(lodObjects[i].transform, "Chimney", new Vector3(p.width * 0.22f, p.height + p.roofHeight * 0.8f, 0f), new Vector3(0.6f, 1.5f, 0.6f), ctx.stoneMat);
+                    }
+                }
+                else // For far LODs (5-9), extremely simplified boxy shapes
+                {
+                    float scale = Mathf.Lerp(1.0f, 0.9f, t);
+                    GameObjectBuilder.CreateCubeChild(lodObjects[i].transform, "SimplBody", new Vector3(0f, p.height * 0.45f, 0f), new Vector3(p.width * scale, p.height * 0.9f, p.depth * scale), wall);
+                    GameObjectBuilder.CreateCubeChild(lodObjects[i].transform, "SimplRoof", new Vector3(0f, p.height + p.roofHeight * 0.3f, 0f), new Vector3(p.width * 1.1f * scale, p.roofHeight * 0.6f, p.depth * 1.1f * scale), roof);
+                }
+
+                GameObjectBuilder.SetShadowsRecursive(lodObjects[i], i < 3 ? ShadowCastingMode.On : ShadowCastingMode.Off, i < 5);
+            }
+
+            // Define screen relative heights for 10 levels
+            // 0 -> 1.0, 9 -> 0.01
+            for (int i = 0; i < lodCount; i++)
+            {
+                float screenHeight = Mathf.Pow(0.85f, i); // Exponential decay for transitions
+                if (i == lodCount - 1) screenHeight = 0.01f;
+                
+                lods[i] = new LOD(screenHeight, lodObjects[i].GetComponentsInChildren<Renderer>());
+            }
+
+            LODGroup group = root.AddComponent<LODGroup>();
+            group.setLODs(lods);
+            group.RecalculateBounds();
         }
 
     }

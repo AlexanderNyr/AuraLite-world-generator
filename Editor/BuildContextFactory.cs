@@ -42,11 +42,14 @@ namespace AuraLiteWorldGenerator.Editor
             ctx.wheatTex = AssetFactory.CreateOrReplaceTextureAsset(ctx.texturesFolder + "/T_Wheat.asset", texSize, texSize, new Color(0.61f, 0.53f, 0.20f), new Color(0.75f, 0.66f, 0.26f), 0.10f, 7.2f, false);
             ctx.dirtTex = AssetFactory.CreateOrReplaceTextureAsset(ctx.texturesFolder + "/T_Dirt.asset", texSize, texSize, new Color(0.39f, 0.30f, 0.20f), new Color(0.49f, 0.38f, 0.26f), 0.15f, 6.4f, false);
             ctx.forestTex = AssetFactory.CreateOrReplaceTextureAsset(ctx.texturesFolder + "/T_Forest.asset", texSize, texSize, new Color(0.17f, 0.29f, 0.13f), new Color(0.22f, 0.35f, 0.15f), 0.16f, 6.1f, true);
+            ctx.stoneTex = AssetFactory.CreateOrReplaceTextureAsset(ctx.texturesFolder + "/T_Stone.asset", texSize, texSize, new Color(0.35f, 0.35f, 0.36f), new Color(0.48f, 0.48f, 0.50f), 0.12f, 8.4f, true);
             ctx.cloudTex = AssetFactory.CreateOrReplaceCloudTextureAsset(ctx.texturesFolder + "/T_Clouds.asset", texSize, texSize);
+            
+            ctx.normalMap = AssetFactory.CreateOrReplaceTextureAsset(ctx.texturesFolder + "/T_SharedNormal.asset", texSize, texSize, Color.white, Color.white, 0f, 12f, false, true);
 
             Shader shader = ctx.terrainShader != null ? ctx.terrainShader : ctx.litShader;
-            ctx.terrainMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_TerrainURP.mat", Color.white, 0f, 0.02f, shader);
-            ctx.roadMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_Road.mat", new Color(0.42f, 0.35f, 0.26f), 0f, 0.06f, ctx.litShader);
+            ctx.terrainMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_TerrainURP.mat", Color.white, 0f, 0f, shader);
+            ctx.roadMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_Road.mat", new Color(0.42f, 0.35f, 0.26f), 0f, 0f, ctx.litShader);
             ctx.shoulderMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_Shoulder.mat", new Color(0.55f, 0.55f, 0.54f), 0f, 0.18f, ctx.litShader);
             ctx.grassPreviewMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_GrassPreview.mat", new Color(0.31f, 0.53f, 0.25f), 0f, 0.04f, ctx.litShader);
             ctx.wheatPreviewMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_WheatPreview.mat", new Color(0.74f, 0.66f, 0.28f), 0f, 0.04f, ctx.litShader);
@@ -74,6 +77,12 @@ namespace AuraLiteWorldGenerator.Editor
             AssetFactory.EnableEmission(ctx.forgeFireMat, new Color(1.2f, 0.35f, 0.05f));
             AssetFactory.SetTextureSafe(ctx.cloudMat, "_BaseMap", ctx.cloudTex);
             AssetFactory.SetTextureSafe(ctx.cloudMat, "_MainTex", ctx.cloudTex);
+            
+            // Set normal maps for materials
+            AssetFactory.SetTextureSafe(ctx.terrainMat, "_BumpMap", ctx.normalMap);
+            AssetFactory.SetTextureSafe(ctx.roadMat, "_BumpMap", ctx.normalMap);
+            AssetFactory.SetTextureSafe(ctx.stoneMat, "_BumpMap", ctx.normalMap);
+
             AssetFactory.EnableInstancing(
                 ctx.terrainMat, ctx.roadMat, ctx.shoulderMat, ctx.grassPreviewMat, ctx.wheatPreviewMat, ctx.dirtMat,
                 ctx.wallCreamMat, ctx.wallWarmMat, ctx.timberMat, ctx.roofRedMat, ctx.roofDarkMat, ctx.stoneMat,
@@ -84,6 +93,7 @@ namespace AuraLiteWorldGenerator.Editor
             ctx.wheatLayer = AssetFactory.CreateOrReplaceTerrainLayer(settings.outputRoot + "/TerrainLayer_Wheat.terrainlayer", ctx.wheatTex, new Vector2(44f, 44f), 0f);
             ctx.dirtLayer = AssetFactory.CreateOrReplaceTerrainLayer(settings.outputRoot + "/TerrainLayer_Dirt.terrainlayer", ctx.dirtTex, new Vector2(18f, 18f), 0f);
             ctx.forestLayer = AssetFactory.CreateOrReplaceTerrainLayer(settings.outputRoot + "/TerrainLayer_Forest.terrainlayer", ctx.forestTex, new Vector2(26f, 26f), 0f);
+            ctx.stoneLayer = AssetFactory.CreateOrReplaceTerrainLayer(settings.outputRoot + "/TerrainLayer_Stone.terrainlayer", ctx.stoneTex, new Vector2(22f, 22f), 0.15f);
 
             ctx.roofMesh = AssetFactory.CreateOrReplaceMeshAsset(ctx.meshesFolder + "/MESH_RoofPrism.asset", MeshFactory.CreateRoofPrismMesh());
             ctx.coneMesh = AssetFactory.CreateOrReplaceMeshAsset(ctx.meshesFolder + "/MESH_Cone.asset", MeshFactory.CreateConeMesh(18));

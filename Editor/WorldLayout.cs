@@ -81,6 +81,15 @@ namespace AuraLiteWorldGenerator.Editor
         public Shader litShader;
         public Shader terrainShader;
 
+        public Texture2D grassTex;
+        public Texture2D wheatTex;
+        public Texture2D dirtTex;
+        public Texture2D forestTex;
+        public Texture2D stoneTex;
+        public Texture2D cloudTex;
+        
+        public Texture2D normalMap;
+
         public Material terrainMat;
         public Material roadMat;
         public Material shoulderMat;
@@ -106,16 +115,11 @@ namespace AuraLiteWorldGenerator.Editor
         public Material forgeFireMat;
         public Material cloudMat;
 
-        public Texture2D grassTex;
-        public Texture2D wheatTex;
-        public Texture2D dirtTex;
-        public Texture2D forestTex;
-        public Texture2D cloudTex;
-
         public TerrainLayer grassLayer;
         public TerrainLayer wheatLayer;
         public TerrainLayer dirtLayer;
         public TerrainLayer forestLayer;
+        public TerrainLayer stoneLayer;
 
         public Mesh roofMesh;
         public Mesh coneMesh;

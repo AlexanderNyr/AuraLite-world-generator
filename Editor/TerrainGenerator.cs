@@ -25,9 +25,13 @@ namespace AuraLiteWorldGenerator.Editor
             };
 
             HouseSpatialCache houseCache = layout.houseCache ?? new HouseSpatialCache(layout);
+            
+            // Scaled resolutions based on Quality Boost
             int heightRes = layout.tileCount <= 10 ? 1025 : (layout.tileCount <= 18 ? 513 : 257);
             int alphaRes = layout.tileCount <= 12 ? 512 : (layout.tileCount <= 18 ? 256 : 128);
-            int detailRes = layout.tileCount <= 12 ? Mathf.RoundToInt(192 * settings.qualityBoost) : Mathf.RoundToInt(96 * settings.qualityBoost);
+            
+            // Cap detail resolution to 1024 to prevent Unity crashes, while scaling up
+            int detailRes = Mathf.Clamp(Mathf.RoundToInt(128 * Mathf.Sqrt(settings.qualityBoost)), 64, 1024);
             int tileCount = layout.tileCount;
 
             // Compute all heightmaps in parallel on thread-pool workers. Mathf.PerlinNoise and the
@@ -70,7 +74,7 @@ namespace AuraLiteWorldGenerator.Editor
                     td.baseMapResolution = 1024;
                     td.SetDetailResolution(detailRes, 16);
                     td.size = new Vector3(layout.tileSizeMeters, layout.terrainHeightMeters, layout.tileSizeMeters);
-                    td.terrainLayers = new[] { ctx.grassLayer, ctx.wheatLayer, ctx.dirtLayer, ctx.forestLayer };
+                    td.terrainLayers = new[] { ctx.grassLayer, ctx.wheatLayer, ctx.dirtLayer, ctx.forestLayer, ctx.stoneLayer };
                     td.detailPrototypes = new[] { CreateGrassDetailPrototype(ctx), CreateWheatDetailPrototype(ctx) };
                     td.SetHeights(0, 0, heights[index]);
 
@@ -85,12 +89,15 @@ namespace AuraLiteWorldGenerator.Editor
 
                     Terrain terrain = terrainGO.GetComponent<Terrain>();
                     terrain.drawInstanced = true;
-                    terrain.heightmapPixelError = Mathf.Lerp(2.5f, 1.1f, Mathf.InverseLerp(1f, 3f, settings.qualityBoost));
-                    terrain.basemapDistance = 9000f;
+                    // Pixel error can go very low for extreme quality
+                    terrain.heightmapPixelError = Mathf.Lerp(3.5f, 0.5f, Mathf.InverseLerp(1f, 50f, settings.qualityBoost));
+                    terrain.basemapDistance = 10000f + settings.qualityBoost * 200f;
                     terrain.shadowCastingMode = ShadowCastingMode.On;
                     terrain.materialTemplate = ctx.terrainMat;
-                    terrain.detailObjectDistance = 220f + settings.qualityBoost * 90f;
-                    terrain.detailObjectDensity = Mathf.Lerp(1f, 1.7f, Mathf.InverseLerp(1f, 3f, settings.qualityBoost));
+                    // Detail distance scaling
+                    terrain.detailObjectDistance = 180f + settings.qualityBoost * 25f;
+                    // Density cap to preserve performance
+                    terrain.detailObjectDensity = Mathf.Clamp(0.8f + (settings.qualityBoost * 0.1f), 0.5f, 2.5f);
                     terrain.treeDistance = 0f;
                     grid.terrains[x, z] = terrain;
                     yield return null;
@@ -137,39 +144,51 @@ namespace AuraLiteWorldGenerator.Editor
 
         public static float EvaluateTerrainHeightMeters(WorldLayout layout, float worldX, float worldZ, HouseSpatialCache houseCache = null)
         {
-            float broad = 16f + (GeometryHelpers.FBM(worldX * 0.00045f + layout.seed * 0.011f, worldZ * 0.00045f + 9.1f, 4, 0.5f, 2f) - 0.5f) * 20f;
-            float detail = (GeometryHelpers.FBM(worldX * 0.00165f + 54f, worldZ * 0.00165f + 18f, 3, 0.5f, 2.1f) - 0.5f) * 5f;
-            float micro = (Mathf.PerlinNoise(worldX * 0.0041f + 103f, worldZ * 0.0041f + 41f) - 0.5f) * 1.8f;
-            float forestRise = WorldLayoutGenerator.ComputeForestMask(layout, worldX, worldZ) * (10f + GeometryHelpers.FBM(worldX * 0.0009f, worldZ * 0.0009f, 2, 0.5f, 2f) * 16f);
+            // Broad terrain features (hills and valleys)
+            float broad = 18f + (GeometryHelpers.FBM(worldX * 0.00032f + layout.seed * 0.011f, worldZ * 0.00032f + 9.1f, 5, 0.45f, 2.1f) - 0.5f) * 35f;
+            
+            // Detail terrain (small bumps)
+            float detail = (GeometryHelpers.FBM(worldX * 0.0018f + 54f, worldZ * 0.0018f + 18f, 3, 0.5f, 2.2f) - 0.5f) * 6f;
+            
+            // Micro noise for texture
+            float micro = (Mathf.PerlinNoise(worldX * 0.0055f + 103f, worldZ * 0.0055f + 41f) - 0.5f) * 2.2f;
+            
+            // Forests on higher ground
+            float forestMask = WorldLayoutGenerator.ComputeForestMask(layout, worldX, worldZ);
+            float forestRise = forestMask * (15f + GeometryHelpers.FBM(worldX * 0.0008f, worldZ * 0.0008f, 2, 0.5f, 2f) * 22f);
 
             float h = broad + detail + micro + forestRise;
 
+            // Lakes
             float lakeMask = WorldLayoutGenerator.ComputeLakeMask(layout, worldX, worldZ);
             if (lakeMask > 0.001f)
             {
-                float lakeBed = layout.waterLevel - Mathf.Lerp(2.8f, 6.5f, lakeMask);
+                float lakeBed = layout.waterLevel - Mathf.Lerp(3.5f, 8.0f, lakeMask);
                 h = Mathf.Lerp(h, lakeBed, lakeMask);
             }
 
+            // Rivers
             float riverMask = WorldLayoutGenerator.ComputeRiverMask(layout, worldX, worldZ);
             if (riverMask > 0.001f)
             {
-                float riverBed = layout.waterLevel - Mathf.Lerp(1.0f, 3.0f, riverMask);
-                h = Mathf.Lerp(h, riverBed, riverMask * 0.95f);
+                float riverBed = layout.waterLevel - Mathf.Lerp(1.5f, 4.5f, riverMask);
+                h = Mathf.Lerp(h, riverBed, riverMask * 0.98f);
             }
 
+            // Village flattening
             float villageMask = WorldLayoutGenerator.ComputeVillageMask(layout, worldX, worldZ);
             if (villageMask > 0.001f)
             {
-                float villageBase = 15f + (Mathf.PerlinNoise(worldX * 0.00035f + 12f, worldZ * 0.00035f + 31f) - 0.5f) * 2.5f;
-                h = Mathf.Lerp(h, villageBase, villageMask * 0.92f);
+                float villageBase = 15.5f + (Mathf.PerlinNoise(worldX * 0.00028f + 12f, worldZ * 0.00028f + 31f) - 0.5f) * 3.2f;
+                h = Mathf.Lerp(h, villageBase, villageMask * 0.94f);
             }
 
+            // Road flattening
             float roadMask = ComputeRoadMask(layout, worldX, worldZ);
             if (roadMask > 0.001f)
             {
-                float roadBase = 15f + (Mathf.PerlinNoise(worldX * 0.00022f + 5f, worldZ * 0.00022f + 7f) - 0.5f) * 1.4f;
-                h = Mathf.Lerp(h, roadBase, roadMask * 0.9f);
+                float roadBase = 15.2f + (Mathf.PerlinNoise(worldX * 0.00018f + 5f, worldZ * 0.00018f + 7f) - 0.5f) * 1.8f;
+                h = Mathf.Lerp(h, roadBase, roadMask * 0.92f);
             }
 
             if (houseCache != null)
@@ -261,7 +280,7 @@ namespace AuraLiteWorldGenerator.Editor
                     TerrainData td = terrain.terrainData;
                     int w = td.alphamapWidth;
                     int h = td.alphamapHeight;
-                    float[,,] map = new float[h, w, 4];
+                    float[,,] map = new float[h, w, 5]; // Added 5th layer (Stone)
                     float x0 = tx * grid.tileSize;
                     float z0 = tz * grid.tileSize;
                     float invW = 1f / (w - 1);
@@ -273,9 +292,10 @@ namespace AuraLiteWorldGenerator.Editor
                         for (int x = 0; x < w; x++)
                         {
                             float wx = x0 + x * invW * grid.tileSize;
-                            ComputeSplatWeights(layout, wx, wz, out float grass, out float wheat, out float dirt, out float forest);
+                            float slope = td.GetSteepness(x * invW, y * invH);
+                            ComputeSplatWeights(layout, wx, wz, slope, out float grass, out float wheat, out float dirt, out float forest, out float stone);
 
-                            float sum = grass + wheat + dirt + forest;
+                            float sum = grass + wheat + dirt + forest + stone;
                             if (sum < 0.0001f)
                             {
                                 grass = 1f;
@@ -286,6 +306,7 @@ namespace AuraLiteWorldGenerator.Editor
                             map[y, x, 1] = wheat / sum;
                             map[y, x, 2] = dirt / sum;
                             map[y, x, 3] = forest / sum;
+                            map[y, x, 4] = stone / sum;
                         }
                     }
 
@@ -296,7 +317,7 @@ namespace AuraLiteWorldGenerator.Editor
             onComplete?.Invoke();
         }
 
-        public static void ComputeSplatWeights(WorldLayout layout, float wx, float wz, out float grass, out float wheat, out float dirt, out float forest)
+        public static void ComputeSplatWeights(WorldLayout layout, float wx, float wz, float slope, out float grass, out float wheat, out float dirt, out float forest, out float stone)
         {
             forest = WorldLayoutGenerator.ComputeForestMask(layout, wx, wz);
             float village = WorldLayoutGenerator.ComputeVillageMask(layout, wx, wz);
@@ -307,18 +328,22 @@ namespace AuraLiteWorldGenerator.Editor
             float waterEdge = Mathf.Max(lake, river);
             float wheatLayer = WorldLayoutGenerator.ComputeWheatFieldMask(layout, wx, wz, out float fieldBorder);
 
+            stone = Mathf.Clamp01((slope - 25f) / 15f); // Stone on steep slopes
+
             grass = 1f;
             dirt = Mathf.Max(road * 0.98f, house * 0.55f);
             dirt = Mathf.Max(dirt, fieldBorder * 0.38f * (1f - forest));
             dirt = Mathf.Max(dirt, village * 0.10f);
             dirt = Mathf.Max(dirt, waterEdge * 0.42f);
-            wheatLayer *= (1f - road) * (1f - house) * (1f - forest) * (1f - waterEdge);
-            forest *= (1f - road * 0.7f) * (1f - lake);
+            
+            wheatLayer *= (1f - road) * (1f - house) * (1f - forest) * (1f - waterEdge) * (1f - stone);
+            forest *= (1f - road * 0.7f) * (1f - lake) * (1f - stone);
 
             grass *= 1f - dirt * 0.75f;
             grass *= 1f - wheatLayer * 0.72f;
             grass *= 1f - forest * 0.86f;
             grass *= 1f - waterEdge * 0.45f;
+            grass *= 1f - stone;
             grass = Mathf.Max(grass, village * 0.14f);
 
             wheat = wheatLayer;
@@ -367,12 +392,14 @@ namespace AuraLiteWorldGenerator.Editor
                             if (wheatMask > 0.52f)
                             {
                                 float densityMul = nearVillage ? 0.35f : 1f;
-                                wheat[z, x] = Mathf.RoundToInt(Mathf.Lerp(3f, 10f + settings.qualityBoost * 2f, wheatMask) * densityMul * (0.7f + localNoise * 0.6f));
+                                float baseDensity = 8f + Mathf.Sqrt(settings.qualityBoost) * 4f;
+                                wheat[z, x] = Mathf.RoundToInt(Mathf.Lerp(3f, baseDensity, wheatMask) * densityMul * (0.7f + localNoise * 0.6f));
                             }
                             else
                             {
                                 float meadow = Mathf.Max(0.16f, 1f - village * 0.55f) * (1f - fieldBorder * 0.65f);
-                                grass[z, x] = Mathf.RoundToInt(Mathf.Lerp(2f, 8f + settings.qualityBoost * 2f, meadow) * (0.7f + localNoise * 0.6f));
+                                float baseDensity = 6f + Mathf.Sqrt(settings.qualityBoost) * 3f;
+                                grass[z, x] = Mathf.RoundToInt(Mathf.Lerp(2f, baseDensity, meadow) * (0.7f + localNoise * 0.6f));
                             }
                         }
                     }

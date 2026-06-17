@@ -21,7 +21,11 @@ namespace AuraLiteWorldGenerator.Editor
 
             float startZ = layout.forestStartZ - 260f;
             float endZ = layout.worldSizeMeters - 80f;
-            float step = layout.worldSizeMeters > 9000f ? Mathf.Lerp(38f, 26f, Mathf.InverseLerp(1f, 3f, settings.qualityBoost)) : Mathf.Lerp(30f, 18f, Mathf.InverseLerp(1f, 3f, settings.qualityBoost));
+            
+            // Scaled forest density
+            float densityFactor = 1.0f + (settings.qualityBoost * 0.15f);
+            float step = Mathf.Max(8f, 35f / densityFactor);
+            
             int created = 0;
             const int yieldBatch = 50;
 

@@ -38,7 +38,7 @@ namespace AuraLiteWorldGenerator.Runtime
         public const float MaxWheatRatio = 0.85f;
 
         public const float MinQualityBoost = 1f;
-        public const float MaxQualityBoost = 3f;
+        public const float MaxQualityBoost = 50f;
 
         public const float MinFogStartKm = 5f;
         public const float MaxFogStartKm = 30f;

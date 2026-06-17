@@ -27,7 +27,10 @@ namespace AuraLiteWorldGenerator.Editor
                 Vector3 a = road.points[seg];
                 Vector3 b = road.points[seg + 1];
                 float length = Vector3.Distance(a, b);
-                int pieces = Mathf.Max(3, Mathf.CeilToInt(length / Mathf.Lerp(8f, 4.5f, Mathf.InverseLerp(1f, 3f, qualityBoost))));
+                
+                // Increase subdivision for smoother roads at high quality
+                float targetSegLen = Mathf.Max(1.5f, 10.0f / (1.0f + settings.qualityBoost * 0.2f));
+                int pieces = Mathf.Max(3, Mathf.CeilToInt(length / targetSegLen));
 
                 for (int i = 0; i < pieces; i++)
                 {
@@ -37,14 +40,25 @@ namespace AuraLiteWorldGenerator.Editor
                     Vector3 p1 = Vector3.Lerp(a, b, t1);
                     Vector3 mid = (p0 + p1) * 0.5f;
                     float segLen = Vector3.Distance(p0, p1);
-                    mid.y = GeometryHelpers.SampleTerrainHeight(grid, mid) + 0.04f;
+                    
+                    // Sample height with small offset to stay slightly above terrain
+                    mid.y = GeometryHelpers.SampleTerrainHeight(grid, mid) + 0.05f;
 
                     Quaternion rot = Quaternion.LookRotation((p1 - p0).normalized, Vector3.up);
+                    
+                    // Add slight random pitch/roll to road for "rural" feel
+                    float pitchNoise = (Mathf.PerlinNoise(mid.x * 0.12f, mid.z * 0.12f) - 0.5f) * 1.5f;
+                    rot *= Quaternion.Euler(pitchNoise, 0f, 0f);
+
                     Vector3 side = Vector3.Cross(Vector3.up, (p1 - p0).normalized).normalized;
 
-                    GameObjectBuilder.CreateCubeChild(roadRoot.transform, "Road", mid, rot, new Vector3(road.width, 0.12f, segLen + 0.18f), ctx.roadMat);
-                    GameObjectBuilder.CreateCubeChild(roadRoot.transform, "RutL", mid + side * (road.width * 0.16f), rot, new Vector3(road.width * 0.14f, 0.04f, segLen + 0.06f), ctx.dirtMat);
-                    GameObjectBuilder.CreateCubeChild(roadRoot.transform, "RutR", mid - side * (road.width * 0.16f), rot, new Vector3(road.width * 0.14f, 0.04f, segLen + 0.06f), ctx.dirtMat);
+                    // Main road surface - slightly wider to avoid gaps
+                    GameObjectBuilder.CreateCubeChild(roadRoot.transform, "Road", mid, rot, new Vector3(road.width, 0.15f, segLen + 0.35f), ctx.roadMat);
+                    
+                    // Dirt ruts
+                    float rutOff = road.width * 0.18f;
+                    GameObjectBuilder.CreateCubeChild(roadRoot.transform, "RutL", mid + side * rutOff, rot, new Vector3(road.width * 0.15f, 0.05f, segLen + 0.1f), ctx.dirtMat);
+                    GameObjectBuilder.CreateCubeChild(roadRoot.transform, "RutR", mid - side * rutOff, rot, new Vector3(road.width * 0.15f, 0.05f, segLen + 0.1f), ctx.dirtMat);
 
                     if (road.hasStoneShoulders)
                     {

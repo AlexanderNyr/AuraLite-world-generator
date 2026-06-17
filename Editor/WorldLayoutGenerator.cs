@@ -257,9 +257,9 @@ namespace AuraLiteWorldGenerator.Editor
                     placeLeft = true;
 
                 if (placeLeft)
-                    TryAddHouse(layout, center + side * (road.width * 0.5f + setback + layout.random.Range(1f, 5f)), Quaternion.LookRotation(-side, Vector3.up).eulerAngles.y, palette, allowLargeMix);
+                    TryAddHouse(layout, center + side * (road.width * 0.5f + setback + layout.random.Range(1f, 8f)) + forward * layout.random.Range(-spacing * 0.3f, spacing * 0.3f), Quaternion.LookRotation(-side, Vector3.up).eulerAngles.y + layout.random.Range(-12f, 12f), palette, allowLargeMix);
                 if (placeRight)
-                    TryAddHouse(layout, center - side * (road.width * 0.5f + setback + layout.random.Range(1f, 5f)), Quaternion.LookRotation(side, Vector3.up).eulerAngles.y, palette, allowLargeMix);
+                    TryAddHouse(layout, center - side * (road.width * 0.5f + setback + layout.random.Range(1f, 8f)) + forward * layout.random.Range(-spacing * 0.3f, spacing * 0.3f), Quaternion.LookRotation(side, Vector3.up).eulerAngles.y + layout.random.Range(-12f, 12f), palette, allowLargeMix);
 
                 sideToggle++;
                 d += spacing;
@@ -290,24 +290,25 @@ namespace AuraLiteWorldGenerator.Editor
 
         public static bool CanPlaceHouse(WorldLayout layout, HouseSpec spec)
         {
-            float padding = 4f;
+            float padding = 2.5f;
             Vector2 p = new Vector2(spec.position.x, spec.position.z);
-            float myRadius = Mathf.Max(spec.footprint.x, spec.footprint.y) * 0.7f + padding;
+            Vector2 s = spec.footprint;
+            float yaw = spec.yaw;
 
-            // 1. Check against other houses
+            // 1. Check against other houses using OBB
             for (int i = 0; i < layout.houses.Count; i++)
             {
                 var other = layout.houses[i];
-                float otherRadius = Mathf.Max(other.footprint.x, other.footprint.y) * 0.7f;
-                if (Vector2.Distance(p, new Vector2(other.position.x, other.position.z)) < (myRadius + otherRadius))
+                if (GeometryHelpers.IntersectRects(p, s, yaw, new Vector2(other.position.x, other.position.z), other.footprint, other.yaw, padding))
                     return false;
             }
 
             // 2. Check against roads
+            float myRadius = Mathf.Max(s.x, s.y) * 0.5f + 1.0f;
             for (int i = 0; i < layout.roads.Count; i++)
             {
                 float dist = GeometryHelpers.DistancePointPolylineXZ(spec.position, layout.roads[i]);
-                if (dist < (layout.roads[i].width * 0.5f + myRadius))
+                if (dist < (layout.roads[i].width * 0.5f + myRadius + 1.5f))
                     return false;
             }
 
@@ -315,9 +316,13 @@ namespace AuraLiteWorldGenerator.Editor
             if (layout.riverPoints.Count > 1)
             {
                 float dist = GeometryHelpers.DistancePointPolylineXZ(spec.position, layout.riverPoints);
-                if (dist < (layout.riverWidth * 0.5f + myRadius + 2f))
+                if (dist < (layout.riverWidth * 0.5f + myRadius + 4f))
                     return false;
             }
+
+            // 4. Check water mask (lake/river)
+            if (ComputeLakeMask(layout, spec.position.x, spec.position.z) > 0.01f)
+                return false;
 
             return true;
         }
