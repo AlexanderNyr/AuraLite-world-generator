@@ -131,20 +131,32 @@ namespace AuraLiteWorldGenerator.Editor
             }
             else
             {
-                // Generate simple noise-based Normal Map
+                // Generate noise-based Normal Map with better quality
                 for (int y = 0; y < height; y++)
                 {
                     for (int x = 0; x < width; x++)
                     {
                         float nx = x / (float)(width - 1);
                         float ny = y / (float)(height - 1);
-                        float strength = 0.15f;
-                        float v0 = Mathf.PerlinNoise(nx * scale, ny * scale);
-                        float vx = Mathf.PerlinNoise((nx + 0.01f) * scale, ny * scale);
-                        float vy = Mathf.PerlinNoise(nx * scale, (ny + 0.01f) * scale);
+                        float strength = 0.25f;
                         
-                        Vector3 normal = new Vector3((v0 - vx) * strength, (v0 - vy) * strength, 1.0f).normalized;
-                        pixels[y * width + x] = new Color(normal.x * 0.5f + 0.5f, normal.y * 0.5f + 0.5f, normal.z * 0.5f + 0.5f, 1f);
+                        // Multi-octave normal computation
+                        float v0 = FBMForNormal(nx, ny, scale, 3);
+                        float vx = FBMForNormal(nx + 0.005f, ny, scale, 3);
+                        float vy = FBMForNormal(nx, ny + 0.005f, scale, 3);
+                        
+                        Vector3 normal = new Vector3(
+                            (v0 - vx) * strength * scale,
+                            (v0 - vy) * strength * scale,
+                            1.0f
+                        ).normalized;
+                        
+                        pixels[y * width + x] = new Color(
+                            normal.x * 0.5f + 0.5f,
+                            normal.y * 0.5f + 0.5f,
+                            normal.z * 0.5f + 0.5f,
+                            1f
+                        );
                     }
                 }
             }
@@ -164,6 +176,191 @@ namespace AuraLiteWorldGenerator.Editor
             }
             
             return tex;
+        }
+
+        private static float FBMForNormal(float x, float y, float scale, int octaves)
+        {
+            float sum = 0f;
+            float amp = 1f;
+            float freq = scale;
+            float maxVal = 0f;
+            for (int i = 0; i < octaves; i++)
+            {
+                sum += Mathf.PerlinNoise(x * freq, y * freq) * amp;
+                maxVal += amp;
+                amp *= 0.5f;
+                freq *= 2f;
+            }
+            return maxVal > 0f ? sum / maxVal : 0f;
+        }
+
+        /// <summary>
+        /// Creates a procedural wood grain texture with visible rings and fiber lines.
+        /// </summary>
+        public static Texture2D CreateWoodGrainTexture(string path, int width, int height, Color baseColor, Color ringColor, float ringScale)
+        {
+            DeleteExistingAsset<Texture2D>(path);
+            Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, true)
+            {
+                name = Path.GetFileNameWithoutExtension(path),
+                wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Bilinear
+            };
+
+            Color[] pixels = new Color[width * height];
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    float nx = x / (float)(width - 1);
+                    float ny = y / (float)(height - 1);
+                    
+                    // Wood rings - concentric circles with distortion
+                    float distX = nx - 0.5f + Mathf.PerlinNoise(ny * 8f + 1.3f, nx * 3f) * 0.12f;
+                    float distY = ny + Mathf.PerlinNoise(nx * 5f + 7.1f, ny * 4f) * 0.06f;
+                    float ring = Mathf.Sin(distX * ringScale * Mathf.PI * 2f) * 0.5f + 0.5f;
+                    ring = Mathf.Pow(ring, 0.7f); // Sharpen rings slightly
+                    
+                    // Fiber lines along Y
+                    float fiber = Mathf.PerlinNoise(nx * 40f, ny * 2f) * 0.15f;
+                    
+                    // Combine
+                    Color c = Color.Lerp(baseColor, ringColor, ring * 0.6f + fiber);
+                    
+                    // Add subtle noise
+                    float noise = Mathf.PerlinNoise(nx * 20f + 100f, ny * 20f + 200f) * 0.08f - 0.04f;
+                    c += new Color(noise, noise * 0.8f, noise * 0.5f, 0f);
+                    c.a = 0f;
+                    pixels[y * width + x] = c;
+                }
+            }
+
+            tex.SetPixels(pixels);
+            tex.Apply(true, false);
+            AssetDatabase.CreateAsset(tex, path);
+            return tex;
+        }
+
+        /// <summary>
+        /// Creates a procedural brick/stone wall texture with mortar lines.
+        /// </summary>
+        public static Texture2D CreateBrickTexture(string path, int width, int height, Color brickColor, Color mortarColor, float brickScale)
+        {
+            DeleteExistingAsset<Texture2D>(path);
+            Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, true)
+            {
+                name = Path.GetFileNameWithoutExtension(path),
+                wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Bilinear
+            };
+
+            Color[] pixels = new Color[width * height];
+            float brickW = brickScale;
+            float brickH = brickScale * 0.5f;
+            float mortarW = 0.02f;
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    float nx = x / (float)(width - 1);
+                    float ny = y / (float)(height - 1);
+                    
+                    int row = Mathf.FloorToInt(ny / brickH);
+                    float offset = (row % 2 == 0) ? 0f : brickW * 0.5f;
+                    float localX = (nx + offset) % brickW;
+                    float localY = ny % brickH;
+                    
+                    // Mortar check
+                    bool isMortar = localX < mortarW || localY < mortarW;
+                    
+                    // Brick color variation
+                    float brickNoise = Mathf.PerlinNoise(
+                        Mathf.Floor(nx / brickW) * 3.7f + row * 1.3f,
+                        row * 2.1f
+                    ) * 0.3f;
+                    
+                    // Surface roughness
+                    float roughness = Mathf.PerlinNoise(nx * 30f, ny * 30f) * 0.1f;
+                    
+                    Color c;
+                    if (isMortar)
+                    {
+                        c = mortarColor + new Color(roughness, roughness, roughness, 0f);
+                    }
+                    else
+                    {
+                        c = brickColor * (0.85f + brickNoise) + new Color(roughness, roughness * 0.9f, roughness * 0.8f, 0f);
+                    }
+                    c.a = 0f;
+                    pixels[y * width + x] = c;
+                }
+            }
+
+            tex.SetPixels(pixels);
+            tex.Apply(true, false);
+            AssetDatabase.CreateAsset(tex, path);
+            return tex;
+        }
+
+        /// <summary>
+        /// Creates a procedural roof tile texture with overlapping rows.
+        /// </summary>
+        public static Texture2D CreateRoofTileTexture(string path, int width, int height, Color tileColor, float tileScale)
+        {
+            DeleteExistingAsset<Texture2D>(path);
+            Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, true)
+            {
+                name = Path.GetFileNameWithoutExtension(path),
+                wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Bilinear
+            };
+
+            Color[] pixels = new Color[width * height];
+            float tileW = tileScale;
+            float tileH = tileScale * 0.6f;
+            float overlap = 0.15f;
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    float nx = x / (float)(width - 1);
+                    float ny = y / (float)(height - 1);
+                    
+                    int row = Mathf.FloorToInt(ny / tileH);
+                    float offset = (row % 2 == 0) ? 0f : tileW * 0.5f;
+                    float localY = (ny % tileH) / tileH;
+                    
+                    // Tile edge shadow
+                    float shadow = smoothstep(overlap, overlap + 0.05f, localY);
+                    float highlight = 1f - smoothstep(0.0f, 0.03f, localY) * 0.2f;
+                    
+                    // Per-tile color variation
+                    float tileNoise = Mathf.PerlinNoise(
+                        Mathf.Floor((nx + offset) / tileW) * 5.3f + row * 1.7f,
+                        row * 3.1f
+                    ) * 0.25f;
+                    
+                    // Weathering
+                    float weather = Mathf.PerlinNoise(nx * 15f + 50f, ny * 15f + 70f) * 0.1f;
+                    
+                    Color c = tileColor * (0.8f + tileNoise + weather) * shadow * highlight;
+                    c.a = 0f;
+                    pixels[y * width + x] = c;
+                }
+            }
+
+            tex.SetPixels(pixels);
+            tex.Apply(true, false);
+            AssetDatabase.CreateAsset(tex, path);
+            return tex;
+        }
+
+        private static float smoothstep(float edge0, float edge1, float x)
+        {
+            float t = Mathf.Clamp01((x - edge0) / (edge1 - edge0));
+            return t * t * (3f - 2f * t);
         }
 
         public static Texture2D CreateOrReplaceCloudTextureAsset(string path, int width, int height)
@@ -255,8 +452,10 @@ namespace AuraLiteWorldGenerator.Editor
             profile.Add<Bloom>(true);
             if (profile.TryGet<Bloom>(out var bloom))
             {
-                bloom.intensity.Override(0.5f);
-                bloom.threshold.Override(1.0f);
+                bloom.intensity.Override(0.35f);
+                bloom.threshold.Override(1.2f);
+                bloom.scatter.Override(0.7f);
+                bloom.tint.Override(new Color(1f, 0.95f, 0.9f));
             }
 
             profile.Add<Tonemapping>(true);
@@ -268,12 +467,64 @@ namespace AuraLiteWorldGenerator.Editor
             profile.Add<ColorAdjustments>(true);
             if (profile.TryGet<ColorAdjustments>(out var colorAdjustments))
             {
-                colorAdjustments.contrast.Override(15f);
-                colorAdjustments.saturation.Override(10f);
+                colorAdjustments.contrast.Override(12f);
+                colorAdjustments.saturation.Override(8f);
+                colorAdjustments.postExposure.Override(0.05f);
             }
 
-            // For Unity 6 Volumetric effects, we use reflection to avoid compilation errors 
-            // if the project is using an older URP version or missing references.
+            // Color Curves for cinematic look
+            profile.Add<ColorCurves>(true);
+            if (profile.TryGet<ColorCurves>(out var curves))
+            {
+                // Slight warm shadows, cool highlights
+                var masterCurve = curves.master;
+                masterCurve.Override(new AnimationCurve(
+                    new Keyframe(0f, 0f),
+                    new Keyframe(0.25f, 0.26f),
+                    new Keyframe(0.5f, 0.52f),
+                    new Keyframe(0.75f, 0.76f),
+                    new Keyframe(1f, 1f)
+                ));
+                
+                // Red channel: slightly lifted shadows for warmth
+                var redCurve = curves.red;
+                redCurve.Override(new AnimationCurve(
+                    new Keyframe(0f, 0.02f),
+                    new Keyframe(0.5f, 0.51f),
+                    new Keyframe(1f, 1f)
+                ));
+                
+                // Blue channel: slightly cool highlights
+                var blueCurve = curves.blue;
+                blueCurve.Override(new AnimationCurve(
+                    new Keyframe(0f, 0f),
+                    new Keyframe(0.5f, 0.49f),
+                    new Keyframe(1f, 0.98f)
+                ));
+            }
+
+            // White Balance for warm sunlight feel
+            profile.Add<WhiteBalance>(true);
+            if (profile.TryGet<WhiteBalance>(out var whiteBalance))
+            {
+                whiteBalance.temperature.Override(15f); // Slightly warm
+                whiteBalance.tint.Override(5f); // Slightly green/magenta
+            }
+
+            // Vignette for cinematic framing
+            profile.Add<Vignette>(true);
+            if (profile.TryGet<Vignette>(out var vignette))
+            {
+                vignette.intensity.Override(0.2f);
+                vignette.smoothness.Override(0.5f);
+                vignette.roundness.Override(0.8f);
+                vignette.color.Override(new Color(0f, 0f, 0f));
+            }
+
+            // Screen Space Ambient Occlusion
+            AddVolumeComponentIfExists(profile, "UnityEngine.Rendering.Universal.ScreenSpaceAmbientOcclusion");
+
+            // For Unity 6 Volumetric effects, use reflection to avoid compilation errors
             AddVolumeComponentIfExists(profile, "UnityEngine.Rendering.Universal.VolumetricClouds");
             AddVolumeComponentIfExists(profile, "UnityEngine.Rendering.Universal.PhysicallyBasedSky");
             AddVolumeComponentIfExists(profile, "UnityEngine.Rendering.Universal.Fog");

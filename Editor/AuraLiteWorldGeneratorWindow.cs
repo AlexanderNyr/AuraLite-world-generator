@@ -257,7 +257,10 @@ namespace AuraLiteWorldGenerator.Editor
                 pipeline.AddModule(new VegetationModule());
                 pipeline.AddModule(new PropsModule());
                 pipeline.AddModule(new OptimizationModule());
+                pipeline.AddModule(new NavMeshModule());
                 pipeline.AddModule(new LightingModule());
+                pipeline.AddModule(new WeatherModule());
+                pipeline.AddModule(new DayNightModule());
 
                 await pipeline.ExecuteAsync(context, reporter, ct);
 
@@ -409,7 +412,7 @@ namespace AuraLiteWorldGenerator.Editor
 
             if (CheckCancellation("Painting terrain layers...", 0.42f, cancellationToken))
                 throw new System.OperationCanceledException("Generation cancelled by user.");
-            yield return TerrainGenerator.PaintTerrainGrid(ctx, grid, layout, null, cancellationToken);
+            yield return TerrainGenerator.PaintTerrainGrid(ctx, grid, layout, null, null, cancellationToken);
 
             if (CheckCancellation("Creating grass and wheat details...", 0.52f, cancellationToken))
                 throw new System.OperationCanceledException("Generation cancelled by user.");

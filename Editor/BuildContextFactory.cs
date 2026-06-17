@@ -47,6 +47,13 @@ namespace AuraLiteWorldGenerator.Editor
             
             ctx.normalMap = AssetFactory.CreateOrReplaceTextureAsset(ctx.texturesFolder + "/T_SharedNormal.asset", texSize, texSize, Color.white, Color.white, 0f, 12f, false, true);
 
+            // Enhanced procedural textures with specific material patterns
+            Texture2D woodGrainTex = AssetFactory.CreateWoodGrainTexture(ctx.texturesFolder + "/T_WoodGrain.asset", texSize, texSize, new Color(0.30f, 0.19f, 0.10f), new Color(0.22f, 0.13f, 0.06f), 6f);
+            Texture2D brickTex = AssetFactory.CreateBrickTexture(ctx.texturesFolder + "/T_BrickWall.asset", texSize, texSize, new Color(0.82f, 0.77f, 0.68f), new Color(0.55f, 0.50f, 0.44f), 0.18f);
+            Texture2D roofTileRedTex = AssetFactory.CreateRoofTileTexture(ctx.texturesFolder + "/T_RoofTileRed.asset", texSize, texSize, new Color(0.50f, 0.20f, 0.12f), 0.15f);
+            Texture2D roofTileDarkTex = AssetFactory.CreateRoofTileTexture(ctx.texturesFolder + "/T_RoofTileDark.asset", texSize, texSize, new Color(0.22f, 0.20f, 0.19f), 0.15f);
+            Texture2D barkDetailTex = AssetFactory.CreateOrReplaceTextureAsset(ctx.texturesFolder + "/T_BarkDetail.asset", texSize, texSize, new Color(0.18f, 0.11f, 0.06f), new Color(0.30f, 0.20f, 0.12f), 0.12f, 14f, true);
+
             Shader shader = ctx.terrainShader != null ? ctx.terrainShader : ctx.litShader;
             ctx.terrainMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_TerrainURP.mat", Color.white, 0f, 0f, shader);
             ctx.roadMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_Road.mat", new Color(0.42f, 0.35f, 0.26f), 0f, 0f, ctx.litShader);
@@ -54,13 +61,35 @@ namespace AuraLiteWorldGenerator.Editor
             ctx.grassPreviewMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_GrassPreview.mat", new Color(0.31f, 0.53f, 0.25f), 0f, 0.04f, ctx.litShader);
             ctx.wheatPreviewMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_WheatPreview.mat", new Color(0.74f, 0.66f, 0.28f), 0f, 0.04f, ctx.litShader);
             ctx.dirtMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_Dirt.mat", new Color(0.42f, 0.33f, 0.22f), 0f, 0.03f, ctx.litShader);
+            
+            // Wall materials with brick texture for better visual
             ctx.wallCreamMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_WallCream.mat", new Color(0.82f, 0.77f, 0.68f), 0f, 0.18f, ctx.litShader);
+            AssetFactory.SetTextureSafe(ctx.wallCreamMat, "_BaseMap", brickTex);
+            AssetFactory.SetTextureSafe(ctx.wallCreamMat, "_MainTex", brickTex);
+            
             ctx.wallWarmMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_WallWarm.mat", new Color(0.72f, 0.63f, 0.53f), 0f, 0.16f, ctx.litShader);
+            
+            // Timber with wood grain
             ctx.timberMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_Timber.mat", new Color(0.29f, 0.18f, 0.10f), 0f, 0.22f, ctx.litShader);
+            AssetFactory.SetTextureSafe(ctx.timberMat, "_BaseMap", woodGrainTex);
+            AssetFactory.SetTextureSafe(ctx.timberMat, "_MainTex", woodGrainTex);
+            
+            // Roof materials with tile texture
             ctx.roofRedMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_RoofRed.mat", new Color(0.47f, 0.19f, 0.11f), 0f, 0.28f, ctx.litShader);
+            AssetFactory.SetTextureSafe(ctx.roofRedMat, "_BaseMap", roofTileRedTex);
+            AssetFactory.SetTextureSafe(ctx.roofRedMat, "_MainTex", roofTileRedTex);
+            
             ctx.roofDarkMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_RoofDark.mat", new Color(0.21f, 0.19f, 0.18f), 0f, 0.24f, ctx.litShader);
+            AssetFactory.SetTextureSafe(ctx.roofDarkMat, "_BaseMap", roofTileDarkTex);
+            AssetFactory.SetTextureSafe(ctx.roofDarkMat, "_MainTex", roofTileDarkTex);
+            
             ctx.stoneMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_Stone.mat", new Color(0.56f, 0.54f, 0.52f), 0f, 0.20f, ctx.litShader);
+            
+            // Bark with detailed texture
             ctx.barkMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_Bark.mat", new Color(0.24f, 0.16f, 0.10f), 0f, 0.16f, ctx.litShader);
+            AssetFactory.SetTextureSafe(ctx.barkMat, "_BaseMap", barkDetailTex);
+            AssetFactory.SetTextureSafe(ctx.barkMat, "_MainTex", barkDetailTex);
+            
             ctx.pineMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_Pine.mat", new Color(0.14f, 0.28f, 0.15f), 0f, 0.10f, ctx.litShader);
             ctx.leafMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_Leaf.mat", new Color(0.24f, 0.44f, 0.19f), 0f, 0.10f, ctx.litShader);
             ctx.glassMat = AssetFactory.CreateTransparentMaterialAsset(ctx.materialsFolder + "/M_Glass.mat", new Color(0.72f, 0.83f, 0.92f, 0.42f), 0f, 0.68f, ctx.litShader);
@@ -68,7 +97,12 @@ namespace AuraLiteWorldGenerator.Editor
             ctx.waterMat = AssetFactory.CreateTransparentMaterialAsset(ctx.materialsFolder + "/M_Water.mat", new Color(0.22f, 0.41f, 0.58f, 0.78f), 0f, 0.86f, ctx.litShader);
             ctx.grassBladeMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_GrassBlade.mat", new Color(0.31f, 0.56f, 0.25f), 0f, 0.02f, ctx.litShader);
             ctx.wheatBladeMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_WheatBlade.mat", new Color(0.77f, 0.69f, 0.30f), 0f, 0.03f, ctx.litShader);
+            
+            // Log wall with wood grain
             ctx.logWallMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_LogWall.mat", new Color(0.34f, 0.23f, 0.13f), 0f, 0.18f, ctx.litShader);
+            AssetFactory.SetTextureSafe(ctx.logWallMat, "_BaseMap", woodGrainTex);
+            AssetFactory.SetTextureSafe(ctx.logWallMat, "_MainTex", woodGrainTex);
+            
             ctx.copperRoofMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_CopperRoof.mat", new Color(0.26f, 0.46f, 0.33f), 0f, 0.22f, ctx.litShader);
             ctx.forgeFireMat = AssetFactory.CreateOpaqueMaterialAsset(ctx.materialsFolder + "/M_ForgeFire.mat", new Color(0.95f, 0.44f, 0.10f), 0f, 0.78f, ctx.litShader);
             ctx.cloudMat = AssetFactory.CreateTransparentMaterialAsset(ctx.materialsFolder + "/M_Cloud.mat", new Color(1f, 1f, 1f, 0.78f), 0f, 0.10f, ctx.litShader);
@@ -82,6 +116,11 @@ namespace AuraLiteWorldGenerator.Editor
             AssetFactory.SetTextureSafe(ctx.terrainMat, "_BumpMap", ctx.normalMap);
             AssetFactory.SetTextureSafe(ctx.roadMat, "_BumpMap", ctx.normalMap);
             AssetFactory.SetTextureSafe(ctx.stoneMat, "_BumpMap", ctx.normalMap);
+            AssetFactory.SetTextureSafe(ctx.wallCreamMat, "_BumpMap", ctx.normalMap);
+            AssetFactory.SetTextureSafe(ctx.barkMat, "_BumpMap", ctx.normalMap);
+            AssetFactory.SetTextureSafe(ctx.roofRedMat, "_BumpMap", ctx.normalMap);
+            AssetFactory.SetTextureSafe(ctx.roofDarkMat, "_BumpMap", ctx.normalMap);
+            AssetFactory.SetTextureSafe(ctx.timberMat, "_BumpMap", ctx.normalMap);
 
             AssetFactory.EnableInstancing(
                 ctx.terrainMat, ctx.roadMat, ctx.shoulderMat, ctx.grassPreviewMat, ctx.wheatPreviewMat, ctx.dirtMat,

@@ -51,6 +51,38 @@ namespace AuraLiteWorldGenerator.Runtime
         public const float TerrainTileSizeSmall = 1024f;
         public const float TerrainTileSizeLarge = 2048f;
         public const float LargeWorldThreshold = 7000f;
+
+        // Erosion defaults
+        public const int DefaultHydraulicErosionIterations = 50000;
+        public const float DefaultHydraulicErosionStrength = 1.0f;
+        public const int DefaultThermalErosionIterations = 20000;
+        public const float DefaultThermalErosionStrength = 0.8f;
+        public const float DefaultThermalTalusAngle = 0.65f;
+
+        // Water shader defaults
+        public const float DefaultWaterDepthMax = 8.0f;
+        public const float DefaultWaterWaveHeight = 0.15f;
+        public const float DefaultWaterFoamWidth = 0.6f;
+        public const float DefaultWaterCausticsStrength = 0.3f;
+        public const float DefaultWaterFlowSpeed = 0.3f;
+
+        // Weather defaults
+        public const float DefaultWeatherMinDuration = 120f;
+        public const float DefaultWeatherMaxDuration = 360f;
+        public const float DefaultWeatherTransitionSpeed = 0.5f;
+
+        // Day/Night defaults
+        public const float DefaultDayLengthMinutes = 30f;
+        public const float DefaultLampOnHour = 18.5f;
+        public const float DefaultLampOffHour = 6.5f;
+        public const float DefaultSunriseHour = 6f;
+        public const float DefaultSunsetHour = 20f;
+
+        // NavMesh defaults
+        public const float DefaultNavMeshAgentRadius = 0.5f;
+        public const float DefaultNavMeshAgentHeight = 2f;
+        public const float DefaultNavMeshAgentSlope = 45f;
+        public const float DefaultNavMeshAgentClimb = 0.75f;
     }
 
     public enum BuildingKind

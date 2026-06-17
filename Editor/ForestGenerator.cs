@@ -2,15 +2,22 @@ using System.Collections;
 using System.Threading;
 using UnityEngine;
 using UnityEngine.Rendering;
+using AuraLiteWorldGenerator.Editor.Biomes;
 
 namespace AuraLiteWorldGenerator.Editor
 {
     /// <summary>
     /// Generates the far forest with pines and broadleaf trees.
+    /// Biome-aware: Boreal biomes produce more pines, Temperate biomes produce more broadleaf.
     /// </summary>
     public static class ForestGenerator
     {
         public static IEnumerator CreateFarForest(BuildContext ctx, TerrainGrid grid, WorldLayout layout, GenerationSettings settings, Transform parent, CancellationToken cancellationToken = default)
+        {
+            return CreateFarForest(ctx, grid, layout, settings, parent, null, cancellationToken);
+        }
+
+        public static IEnumerator CreateFarForest(BuildContext ctx, TerrainGrid grid, WorldLayout layout, GenerationSettings settings, Transform parent, IBiomeProvider biomeProvider, CancellationToken cancellationToken = default)
         {
             GameObject edgeRoot = new GameObject("ForestEdge");
             edgeRoot.transform.SetParent(parent);
@@ -44,7 +51,27 @@ namespace AuraLiteWorldGenerator.Editor
                     Vector3 pos = new Vector3(x + (GeometryHelpers.Hash01((int)x, (int)z, layout.seed + 17) - 0.5f) * step * 0.6f, 0f, z + (GeometryHelpers.Hash01((int)x, (int)z, layout.seed + 27) - 0.5f) * step * 0.6f);
                     pos.y = GeometryHelpers.SampleTerrainHeight(grid, pos);
                     bool edgeBand = forest < 0.72f;
-                    bool pine = edgeBand ? (GeometryHelpers.Hash01((int)x, (int)z, layout.seed + 37) > 0.52f) : (GeometryHelpers.Hash01((int)x, (int)z, layout.seed + 37) > 0.24f);
+                    
+                    // Biome-aware tree type selection
+                    bool pine;
+                    if (biomeProvider != null)
+                    {
+                        BiomeData biome = biomeProvider.GetBiome(new Vector2(x, z));
+                        bool biomePrefersPine = DefaultBiomeProvider.PrefersPine(biome.BiomeId);
+                        
+                        // Mix biome preference with hash
+                        float pineChance = edgeBand ? 0.52f : 0.24f;
+                        if (biomePrefersPine)
+                            pineChance = edgeBand ? 0.75f : 0.85f;
+                        else
+                            pineChance = edgeBand ? 0.25f : 0.10f;
+                        
+                        pine = GeometryHelpers.Hash01((int)x, (int)z, layout.seed + 37) > (1f - pineChance);
+                    }
+                    else
+                    {
+                        pine = edgeBand ? (GeometryHelpers.Hash01((int)x, (int)z, layout.seed + 37) > 0.52f) : (GeometryHelpers.Hash01((int)x, (int)z, layout.seed + 37) > 0.24f);
+                    }
 
                     GameObject tree = new GameObject((pine ? "Pine_" : "Tree_") + created++);
                     tree.transform.SetParent(edgeBand ? edgeRoot.transform : (pine ? pines.transform : broadleaf.transform));
@@ -73,3 +100,4 @@ namespace AuraLiteWorldGenerator.Editor
 
     }
 }
+

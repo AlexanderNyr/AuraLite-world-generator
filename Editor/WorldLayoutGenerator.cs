@@ -7,6 +7,7 @@ namespace AuraLiteWorldGenerator.Editor
 {
     /// <summary>
     /// Generates the high-level world layout (roads, river, village, houses) from settings.
+    /// Integrates OrganicRoadStrategy for natural road paths and RiverNetworkGenerator for rivers.
     /// </summary>
     public static class WorldLayoutGenerator
     {
@@ -162,6 +163,113 @@ namespace AuraLiteWorldGenerator.Editor
             track.points.Add(trackStart + new Vector3(layout.random.Range(-70f, 70f), 0f, trackDir * trackLength * 0.46f));
             track.points.Add(trackStart + new Vector3(layout.random.Range(-140f, 140f), 0f, trackDir * trackLength));
             layout.roads.Add(track);
+        }
+
+        /// <summary>
+        /// Generates organic connecting roads between key locations using A* pathfinding.
+        /// Creates natural-looking paths that avoid water and steep terrain.
+        /// </summary>
+        public static void GenerateConnectingRoads(WorldLayout layout, GenerationSettings settings, float[,] costMap, int gridWidth, int gridHeight, float cellWorldSize)
+        {
+            var strategy = new Roads.OrganicRoadStrategy();
+            
+            // Connect special buildings with organic roads
+            var keyPoints = new List<Vector2Int>();
+            
+            // Add village center
+            int cx = Mathf.Clamp(Mathf.RoundToInt(layout.villageCenter.x / cellWorldSize), 0, gridWidth - 1);
+            int cz = Mathf.Clamp(Mathf.RoundToInt(layout.villageCenter.z / cellWorldSize), 0, gridHeight - 1);
+            keyPoints.Add(new Vector2Int(cx, cz));
+            
+            // Add lake center
+            int lx = Mathf.Clamp(Mathf.RoundToInt(layout.lakeCenter.x / cellWorldSize), 0, gridWidth - 1);
+            int lz = Mathf.Clamp(Mathf.RoundToInt(layout.lakeCenter.z / cellWorldSize), 0, gridHeight - 1);
+            keyPoints.Add(new Vector2Int(lx, lz));
+            
+            // Add forest edge point
+            int fx = Mathf.Clamp(Mathf.RoundToInt(layout.villageCenter.x / cellWorldSize), 0, gridWidth - 1);
+            int fz = Mathf.Clamp(Mathf.RoundToInt(layout.forestStartZ / cellWorldSize), 0, gridHeight - 1);
+            keyPoints.Add(new Vector2Int(fx, fz));
+            
+            // Generate roads between consecutive key points
+            for (int i = 0; i < keyPoints.Count - 1; i++)
+            {
+                var request = new Core.RoadNetworkRequest
+                {
+                    Bounds = new Vector3(layout.worldSizeMeters, 0f, layout.worldSizeMeters),
+                    Seed = settings.seed + i * 1000,
+                    GridSize = new Vector2Int(gridWidth, gridHeight),
+                    CostMap = costMap,
+                    Start = keyPoints[i],
+                    End = keyPoints[i + 1]
+                };
+                
+                var network = strategy.Generate(request);
+                foreach (var road in network.Roads)
+                {
+                    // Convert grid coordinates to world coordinates
+                    RoadPath worldRoad = new RoadPath
+                    {
+                        name = "ConnectingRoad_" + i,
+                        width = settings.laneWidthMeters * 0.85f,
+                        mainRoad = false,
+                        hasStoneShoulders = false
+                    };
+                    
+                    foreach (var point in road.points)
+                    {
+                        worldRoad.points.Add(new Vector3(point.x * cellWorldSize, 0f, point.z * cellWorldSize));
+                    }
+                    
+                    if (worldRoad.points.Count > 1)
+                    {
+                        layout.roads.Add(worldRoad);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Builds a cost map for A* road generation from terrain data and layout masks.
+        /// Low cost = flat, dry terrain. High cost = water, steep, forest.
+        /// </summary>
+        public static float[,] BuildCostMap(WorldLayout layout, int resolution)
+        {
+            float cellSize = layout.worldSizeMeters / resolution;
+            float[,] costMap = new float[resolution, resolution];
+            
+            for (int z = 0; z < resolution; z++)
+            {
+                for (int x = 0; x < resolution; x++)
+                {
+                    float wx = (x + 0.5f) * cellSize;
+                    float wz = (z + 0.5f) * cellSize;
+                    
+                    float cost = 1f; // Base cost
+                    
+                    // Water is very expensive to cross
+                    float lake = ComputeLakeMask(layout, wx, wz);
+                    float river = ComputeRiverMask(layout, wx, wz);
+                    float water = Mathf.Max(lake, river);
+                    if (water > 0.1f) cost += 100f;
+                    
+                    // Forest is moderately expensive
+                    float forest = ComputeForestMask(layout, wx, wz);
+                    cost += forest * 5f;
+                    
+                    // Village area is slightly cheaper (prefer paths through village)
+                    float village = ComputeVillageMask(layout, wx, wz);
+                    cost -= village * 0.5f;
+                    
+                    // Existing roads are cheaper
+                    float road = ComputeRoadMask(layout, wx, wz);
+                    cost -= road * 2f;
+                    
+                    costMap[z, x] = Mathf.Max(0.1f, cost);
+                }
+            }
+            
+            return costMap;
         }
 
         private static void PopulateVillageHouses(WorldLayout layout, GenerationSettings settings)

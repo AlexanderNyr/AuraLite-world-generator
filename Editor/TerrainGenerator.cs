@@ -268,7 +268,7 @@ namespace AuraLiteWorldGenerator.Editor
             return mask;
         }
 
-        public static IEnumerator PaintTerrainGrid(BuildContext ctx, TerrainGrid grid, WorldLayout layout, Action onComplete = null, CancellationToken cancellationToken = default)
+        public static IEnumerator PaintTerrainGrid(BuildContext ctx, TerrainGrid grid, WorldLayout layout, IBiomeProvider biomeProvider, Action onComplete = null, CancellationToken cancellationToken = default)
         {
             for (int tz = 0; tz < grid.tileCount; tz++)
             {
@@ -293,7 +293,7 @@ namespace AuraLiteWorldGenerator.Editor
                         {
                             float wx = x0 + x * invW * grid.tileSize;
                             float slope = td.GetSteepness(x * invW, y * invH);
-                            ComputeSplatWeights(layout, wx, wz, slope, out float grass, out float wheat, out float dirt, out float forest, out float stone);
+                            ComputeSplatWeights(layout, wx, wz, slope, biomeProvider, out float grass, out float wheat, out float dirt, out float forest, out float stone);
 
                             float sum = grass + wheat + dirt + forest + stone;
                             if (sum < 0.0001f)
@@ -317,21 +317,30 @@ namespace AuraLiteWorldGenerator.Editor
             onComplete?.Invoke();
         }
 
-        public static void ComputeSplatWeights(WorldLayout layout, float wx, float wz, float slope, out float grass, out float wheat, out float dirt, out float forest, out float stone)
+        public static void ComputeSplatWeights(WorldLayout layout, float wx, float wz, float slope, IBiomeProvider biomeProvider, out float grass, out float wheat, out float dirt, out float forest, out float stone)
         {
-            forest = WorldLayoutGenerator.ComputeForestMask(layout, wx, wz);
+            // Get biome-based multipliers
+            float biomeGrassMul = 1f, biomeWheatMul = 1f, biomeForestMul = 1f, biomeDirtMul = 1f, biomeStoneMul = 1f;
+            if (biomeProvider != null)
+            {
+                BiomeData biome = biomeProvider.GetBiome(new Vector2(wx, wz));
+                Biomes.DefaultBiomeProvider.GetBiomeTerrainWeights(biome.BiomeId,
+                    out biomeGrassMul, out biomeWheatMul, out biomeForestMul, out biomeDirtMul, out biomeStoneMul);
+            }
+
+            forest = WorldLayoutGenerator.ComputeForestMask(layout, wx, wz) * biomeForestMul;
             float village = WorldLayoutGenerator.ComputeVillageMask(layout, wx, wz);
             float road = WorldLayoutGenerator.ComputeRoadMask(layout, wx, wz);
             float house = WorldLayoutGenerator.ComputeHouseMask(layout, wx, wz);
             float lake = WorldLayoutGenerator.ComputeLakeMask(layout, wx, wz);
             float river = WorldLayoutGenerator.ComputeRiverMask(layout, wx, wz);
             float waterEdge = Mathf.Max(lake, river);
-            float wheatLayer = WorldLayoutGenerator.ComputeWheatFieldMask(layout, wx, wz, out float fieldBorder);
+            float wheatLayer = WorldLayoutGenerator.ComputeWheatFieldMask(layout, wx, wz, out float fieldBorder) * biomeWheatMul;
 
-            stone = Mathf.Clamp01((slope - 25f) / 15f); // Stone on steep slopes
+            stone = Mathf.Clamp01((slope - 25f) / 15f) * biomeStoneMul; // Stone on steep slopes
 
-            grass = 1f;
-            dirt = Mathf.Max(road * 0.98f, house * 0.55f);
+            grass = 1f * biomeGrassMul;
+            dirt = Mathf.Max(road * 0.98f, house * 0.55f) * biomeDirtMul;
             dirt = Mathf.Max(dirt, fieldBorder * 0.38f * (1f - forest));
             dirt = Mathf.Max(dirt, village * 0.10f);
             dirt = Mathf.Max(dirt, waterEdge * 0.42f);
@@ -347,6 +356,12 @@ namespace AuraLiteWorldGenerator.Editor
             grass = Mathf.Max(grass, village * 0.14f);
 
             wheat = wheatLayer;
+        }
+
+        // Backward-compatible overload without biome provider
+        public static void ComputeSplatWeights(WorldLayout layout, float wx, float wz, float slope, out float grass, out float wheat, out float dirt, out float forest, out float stone)
+        {
+            ComputeSplatWeights(layout, wx, wz, slope, null, out grass, out wheat, out dirt, out forest, out stone);
         }
 
         public static IEnumerator PopulateTerrainDetails(BuildContext ctx, TerrainGrid grid, WorldLayout layout, GenerationSettings settings, Action onComplete = null, CancellationToken cancellationToken = default)

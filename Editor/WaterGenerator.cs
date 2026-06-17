@@ -1,10 +1,12 @@
 using UnityEngine;
 using UnityEngine.Rendering;
+using AuraLiteWorldGenerator.Editor.Core;
 
 namespace AuraLiteWorldGenerator.Editor
 {
     /// <summary>
     /// Generates the lake, river, and riverside vegetation.
+    /// Uses the enhanced WaterURP shader with depth fade, foam, caustics, and flow.
     /// </summary>
     public static class WaterGenerator
     {
@@ -21,8 +23,21 @@ namespace AuraLiteWorldGenerator.Editor
             GameObject lake = new GameObject("Lake", typeof(MeshFilter), typeof(MeshRenderer));
             lake.transform.SetParent(parent);
             lake.transform.position = new Vector3(layout.lakeCenter.x, layout.waterLevel, layout.lakeCenter.z);
-            lake.GetComponent<MeshFilter>().sharedMesh = MeshFactory.CreateDiscMesh(48, 1f);
-            lake.GetComponent<MeshRenderer>().sharedMaterial = ctx.waterMat;
+            
+            // Higher segment count for smoother lake edge
+            lake.GetComponent<MeshFilter>().sharedMesh = MeshFactory.CreateDiscMesh(64, 1f);
+            
+            var mat = new Material(ctx.waterMat);
+            // Lake-specific shader settings: slower waves, no flow
+            if (mat.HasProperty("_WaveSpeed")) mat.SetFloat("_WaveSpeed", 0.7f);
+            if (mat.HasProperty("_WaveScale")) mat.SetFloat("_WaveScale", 0.3f);
+            if (mat.HasProperty("_WaveHeight")) mat.SetFloat("_WaveHeight", 0.08f);
+            if (mat.HasProperty("_FlowSpeed")) mat.SetFloat("_FlowSpeed", 0.05f);
+            if (mat.HasProperty("_DepthMax")) mat.SetFloat("_DepthMax", 6f);
+            if (mat.HasProperty("_FoamWidth")) mat.SetFloat("_FoamWidth", 1.2f);
+            if (mat.HasProperty("_CausticsStrength")) mat.SetFloat("_CausticsStrength", 0.4f);
+            
+            lake.GetComponent<MeshRenderer>().sharedMaterial = mat;
             lake.transform.localScale = new Vector3(layout.lakeRadiusX * 2f, 1f, layout.lakeRadiusZ * 2f);
             lake.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
         }
@@ -31,6 +46,28 @@ namespace AuraLiteWorldGenerator.Editor
         {
             GameObject riverRoot = new GameObject("River");
             riverRoot.transform.SetParent(parent);
+            
+            // River-specific material with flow
+            var riverMat = new Material(ctx.waterMat);
+            if (riverMat.HasProperty("_WaveSpeed")) riverMat.SetFloat("_WaveSpeed", 1.2f);
+            if (riverMat.HasProperty("_WaveScale")) riverMat.SetFloat("_WaveScale", 0.5f);
+            if (riverMat.HasProperty("_WaveHeight")) riverMat.SetFloat("_WaveHeight", 0.04f);
+            if (riverMat.HasProperty("_FlowSpeed")) riverMat.SetFloat("_FlowSpeed", 0.6f);
+            if (riverMat.HasProperty("_DepthMax")) riverMat.SetFloat("_DepthMax", 3f);
+            if (riverMat.HasProperty("_FoamWidth")) riverMat.SetFloat("_FoamWidth", 0.4f);
+            if (riverMat.HasProperty("_CausticsStrength")) riverMat.SetFloat("_CausticsStrength", 0.2f);
+            
+            // Set flow direction along river
+            Vector3 flowDir = Vector3.zero;
+            if (layout.riverPoints.Count >= 2)
+            {
+                flowDir = (layout.riverPoints[layout.riverPoints.Count - 1] - layout.riverPoints[0]).normalized;
+            }
+            if (riverMat.HasProperty("_FlowDirection"))
+            {
+                riverMat.SetVector("_FlowDirection", new Vector4(flowDir.x, 0f, flowDir.z, 0f));
+            }
+            
             for (int i = 0; i < layout.riverPoints.Count - 1; i++)
             {
                 Vector3 a = layout.riverPoints[i];
@@ -48,7 +85,7 @@ namespace AuraLiteWorldGenerator.Editor
                     float segLen = Vector3.Distance(p0, p1);
                     float wobble = 0.88f + Mathf.PerlinNoise(mid.x * 0.004f, mid.z * 0.004f) * 0.34f;
                     float width = layout.riverWidth * Mathf.Lerp(1.18f, 0.86f, i / Mathf.Max(1f, layout.riverPoints.Count - 2f)) * wobble;
-                    GameObjectBuilder.CreateCubeChild(riverRoot.transform, "RiverSegment", mid, Quaternion.LookRotation((p1 - p0).normalized, Vector3.up), new Vector3(width, 0.05f, segLen + 0.25f), ctx.waterMat);
+                    GameObjectBuilder.CreateCubeChild(riverRoot.transform, "RiverSegment", mid, Quaternion.LookRotation((p1 - p0).normalized, Vector3.up), new Vector3(width, 0.05f, segLen + 0.25f), riverMat);
                 }
             }
             MeshCombiner.CombineChildrenByMaterial(riverRoot.transform);
@@ -59,6 +96,11 @@ namespace AuraLiteWorldGenerator.Editor
             GameObject root = new GameObject("WaterVegetation");
             root.transform.SetParent(parent);
 
+            // Get biome provider for biome-aware vegetation
+            IBiomeProvider biomeProvider = null;
+            // Note: biomeProvider would be injected in the full pipeline
+            // For now, we use the default
+            
             int reedCount = Mathf.RoundToInt(180f * settings.qualityBoost);
             for (int i = 0; i < reedCount; i++)
             {

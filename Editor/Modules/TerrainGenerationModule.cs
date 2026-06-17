@@ -17,6 +17,7 @@ namespace AuraLiteWorldGenerator.Editor.Modules
             progress.Report("Generating terrain", 0.0f);
             
             var oldCtx = ctx.Assets.Get<BuildContext>("LegacyContext");
+            var biomeProvider = ctx.Services.Resolve<IBiomeProvider>();
             TerrainGrid grid = null;
 
             // Helper to run IEnumerator as Task
@@ -24,7 +25,7 @@ namespace AuraLiteWorldGenerator.Editor.Modules
             ctx.Assets.Register("TerrainGrid", grid);
             progress.Report("Terrain grid created", 0.4f);
 
-            await RunCoroutineAsTask(TerrainGenerator.PaintTerrainGrid(oldCtx, grid, ctx.Layout, null, ct), ct);
+            await RunCoroutineAsTask(TerrainGenerator.PaintTerrainGrid(oldCtx, grid, ctx.Layout, biomeProvider, null, ct), ct);
             progress.Report("Terrain painted", 0.7f);
 
             await RunCoroutineAsTask(TerrainGenerator.PopulateTerrainDetails(oldCtx, grid, ctx.Layout, ctx.Settings, null, ct), ct);

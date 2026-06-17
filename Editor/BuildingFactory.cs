@@ -152,6 +152,13 @@ namespace AuraLiteWorldGenerator.Editor
                     spec.garden = false;
                     spec.annex = false;
                     break;
+                case BuildingKind.Manor:
+                    spec.footprint = new Vector2(random.Range(12.0f, 14.5f), random.Range(10.0f, 12.5f));
+                    spec.height = random.Range(6.5f, 8.0f);
+                    spec.fenced = true;
+                    spec.garden = true;
+                    spec.annex = true;
+                    break;
                 default:
                     spec.footprint = new Vector2(16f, 12f);
                     spec.height = 7.2f;

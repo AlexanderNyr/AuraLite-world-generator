@@ -15,12 +15,14 @@ namespace AuraLiteWorldGenerator.Editor
             RenderSettings.ambientMode = AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = new Color(0.72f, 0.80f, 0.90f);
             RenderSettings.ambientEquatorColor = new Color(0.45f, 0.52f, 0.43f);
-            RenderSettings.ambientGroundColor = new Color(0.12f, 0.14f, 0.10f); // Darker ground ambient
+            RenderSettings.ambientGroundColor = new Color(0.12f, 0.14f, 0.10f);
+            
+            // Use exponential fog for more realistic atmospheric scattering
             RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogStartDistance = settings.fogStartKm * 1000f;
-            RenderSettings.fogEndDistance = Mathf.Max(RenderSettings.fogStartDistance + 1000f, settings.fogEndKm * 1000f);
+            RenderSettings.fogMode = FogMode.Exponential;
+            RenderSettings.fogDensity = 0.0012f;
             RenderSettings.fogColor = new Color(0.68f, 0.75f, 0.82f);
+            
             QualitySettings.shadowCascades = settings.qualityBoost >= 10f ? 4 : 2;
             QualitySettings.shadowDistance = 400f + settings.qualityBoost * 50f;
             QualitySettings.lodBias = 2.0f + (settings.qualityBoost * 0.5f);
@@ -28,6 +30,17 @@ namespace AuraLiteWorldGenerator.Editor
             QualitySettings.antiAliasing = 8;
             QualitySettings.anisotropicFiltering = AnisotropicFiltering.ForceEnable;
             QualitySettings.globalTextureMipmapLimit = 0;
+            
+            // Better shadow quality
+            QualitySettings.shadowResolution = settings.qualityBoost >= 5f ? ShadowResolution.VeryHigh : ShadowResolution.High;
+            QualitySettings.shadowProjection = ShadowProjection.CloseFit;
+            QualitySettings.shadowNearPlaneOffset = 2f;
+            QualitySettings.shadowDistance = 400f + settings.qualityBoost * 50f;
+            
+            // Reflection settings
+            RenderSettings.defaultReflectionMode = DefaultReflectionMode.Skybox;
+            RenderSettings.reflectionBounces = 3;
+            RenderSettings.reflectionIntensity = 1f;
         }
 
         public static void CreateLightingRig(Transform parent, Vector3 center)
