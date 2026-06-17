@@ -1,4 +1,4 @@
-# AuraLite World Generator v2.0 (Unity 6 URP)
+# AuraLite World Generator v1.0.2 (Unity 6 URP)
 
 A professional-grade procedural world generation platform for Unity 6, designed for high-performance rural environments.
 
